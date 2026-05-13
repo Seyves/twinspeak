@@ -1,0 +1,7 @@
+host: 0.0.0.0:8080
+transcription: 
+  provider: faster_whisper
+  url: http://whisper:9000
+translation: 
+  provider: libretranslate
+  url: http://libretranslate:5000

@@ -1,0 +1,94 @@
+version: '3.9'
+services:
+  whisper:
+    # build:
+    #   context: ./services/WhisperLive
+    #   dockerfile: Dockerfile.gpu
+    image: onerahmet/openai-whisper-asr-webservice:latest-gpu
+    container_name: parlyx-whisper
+    environment:
+      - ASR_MODEL=turbo
+      - ASR_ENGINE=faster_whisper
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    ports:
+      - "9000:9000"
+    networks:
+      - parlyx
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost:9090/health"]
+    #   interval: 10s
+    #   timeout: 5s
+    #   retries: 3
+    #   start_period: 30s
+
+  libretranslate:
+    container_name: libretranslate
+    image: libretranslate/libretranslate:latest-cuda
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
+    command: --disable-web-ui
+    environment:
+     # - LT_UPDATE_MODELS=True
+     - LT_DEBUG=True
+     - PUID=root
+    volumes:
+     - libretranslate:/app/db
+     - libretranslate:/root/.local:rw
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    tty: true
+    networks:
+      - parlyx
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: parlyx-backend
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./backend:/app
+      - /app/tmp
+    networks:
+      - parlyx
+    # depends_on:
+    #   whisper:
+    #     condition: service_healthy
+    command: air -c .air.toml 
+
+  frontend:
+    image: node:22-alpine
+    container_name: parlyx-frontend
+    working_dir: /app
+    environment:
+      - NODE_ENV=development
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - parlyx
+    depends_on:
+      - backend
+    command: sh -c "corepack enable && corepack prepare pnpm@latest --activate && pnpm install && pnpm dev --host"
+
+networks:
+  parlyx:
+    driver: bridge
+
+volumes: 
+  libretranslate: 

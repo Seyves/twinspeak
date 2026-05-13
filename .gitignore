@@ -1,0 +1,26 @@
+# Backend
+backend/tmp/
+backend/go.sum
+!backend/go.sum
+
+# Frontend
+frontend/node_modules/
+frontend/.vite/
+frontend/dist/
+frontend/.pnpm-store
+
+# OS
+.DS_Store
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# Environment
+.env
+.env.local
+*.log
