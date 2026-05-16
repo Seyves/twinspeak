@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	fasterwhisper "github.com/parlyx/backend/faster-whisper"
+	fasterwhisper "github.com/twinspeak/backend/faster-whisper"
 )
 
 type Transcriber interface {

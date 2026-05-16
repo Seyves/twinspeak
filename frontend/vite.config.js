@@ -1,22 +1,27 @@
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import path from "path";
-import tailwindcss from "@tailwindcss/vite";
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import path from 'path'
+import tailwindcss from '@tailwindcss/vite'
+import { readFileSync } from 'fs'
+
 export default defineConfig({
     plugins: [react(), tailwindcss()],
     resolve: {
         alias: {
-            "@": path.resolve(__dirname, "./src"),
+            '@': path.resolve(__dirname, './src'),
         },
     },
     server: {
-        host: "0.0.0.0",
+        https: {
+            key: readFileSync('./key.pem'),
+            cert: readFileSync('./cert.pem'),
+        },
+        host: '0.0.0.0',
         port: 5173,
         proxy: {
-            "/ws/transcribe": {
-                target: "ws://backend:8080",
-                ws: true,
+            '/process-speech': {
+                target: 'http://backend:8080/',
             },
         },
     },
-});
+})

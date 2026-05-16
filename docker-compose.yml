@@ -5,9 +5,9 @@ services:
     #   context: ./services/WhisperLive
     #   dockerfile: Dockerfile.gpu
     image: onerahmet/openai-whisper-asr-webservice:latest-gpu
-    container_name: parlyx-whisper
+    container_name: twinspeak-whisper
     environment:
-      - ASR_MODEL=turbo
+      - ASR_MODEL=medium
       - ASR_ENGINE=faster_whisper
     deploy:
       resources:
@@ -19,7 +19,7 @@ services:
     ports:
       - "9000:9000"
     networks:
-      - parlyx
+      - twinspeak
     # healthcheck:
     #   test: ["CMD", "curl", "-f", "http://localhost:9090/health"]
     #   interval: 10s
@@ -28,7 +28,7 @@ services:
     #   start_period: 30s
 
   libretranslate:
-    container_name: libretranslate
+    container_name: twinspeak-libretranslate
     image: libretranslate/libretranslate:latest-cuda
     ports:
       - "5000:5000"
@@ -50,20 +50,20 @@ services:
               capabilities: [gpu]
     tty: true
     networks:
-      - parlyx
+      - twinspeak
 
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: parlyx-backend
+    container_name: twinspeak-backend
     ports:
       - "8080:8080"
     volumes:
       - ./backend:/app
       - /app/tmp
     networks:
-      - parlyx
+      - twinspeak
     # depends_on:
     #   whisper:
     #     condition: service_healthy
@@ -71,7 +71,7 @@ services:
 
   frontend:
     image: node:22-alpine
-    container_name: parlyx-frontend
+    container_name: twinspeak-frontend
     working_dir: /app
     environment:
       - NODE_ENV=development
@@ -81,13 +81,13 @@ services:
       - ./frontend:/app
       - /app/node_modules
     networks:
-      - parlyx
+      - twinspeak
     depends_on:
       - backend
     command: sh -c "corepack enable && corepack prepare pnpm@latest --activate && pnpm install && pnpm dev --host"
 
 networks:
-  parlyx:
+  twinspeak:
     driver: bridge
 
 volumes: 

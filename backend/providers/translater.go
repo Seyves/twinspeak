@@ -3,7 +3,7 @@ package providers
 import (
 	"fmt"
 
-	"github.com/parlyx/backend/libretranslate"
+	"github.com/twinspeak/backend/libretranslate"
 )
 
 type Translater interface {

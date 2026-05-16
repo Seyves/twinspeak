@@ -1,4 +1,4 @@
-# Parlyx MVP - Real-Time Transcription
+# TwinSpeak MVP - Real-Time Transcription
 
 A real-time audio transcription application using WhisperLive (GPU-accelerated) with a React frontend and Go backend. Audio is captured in the browser, proxied through a Go WebSocket server, and transcribed in real-time using WhisperLive.
 
@@ -68,7 +68,7 @@ docker run --gpus all -p 9090:9090 ghcr.io/collabora/whisperlive-gpu:latest
 ## Project Structure
 
 ```
-parlyx/
+twinspeak/
 ├── docker-compose.yml           # Service orchestration
 ├── backend/                     # Go WebSocket proxy
 │   ├── Dockerfile
@@ -172,7 +172,7 @@ pnpm build
 
 # Backend
 cd backend
-go build -o parlyx-server ./cmd/server
+go build -o twinspeak-server ./cmd/server
 ```
 
 ## Notes

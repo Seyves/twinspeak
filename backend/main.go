@@ -5,13 +5,13 @@ import (
 	"fmt"
 
 	"github.com/gofiber/fiber/v2/log"
-	"github.com/parlyx/backend/providers"
-	"github.com/parlyx/backend/server"
+	"github.com/twinspeak/backend/providers"
+	"github.com/twinspeak/backend/server"
 	"github.com/spf13/viper"
 )
 
 func main() {
-	cfgPath := flag.String("c", "/etc/parlyx/config.yaml", "Path to configuration file")
+	cfgPath := flag.String("c", "/etc/twinspeak/config.yaml", "Path to configuration file")
 	flag.Parse()
 
 	var cfg Config

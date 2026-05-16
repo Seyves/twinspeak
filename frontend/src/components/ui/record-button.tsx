@@ -53,10 +53,11 @@ const RecordButton = React.forwardRef<HTMLButtonElement, RecordButtonProps>(
                 className={cn(
                     'group relative flex items-center justify-center rounded-full',
                     'transition-all duration-300 ease-out',
-                    'hover:scale-105',
-                    'active:scale-95',
-                    'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950',
+                    'hover:scale-110',
+                    'active:scale-90',
+                    'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                     'disabled:opacity-50 disabled:pointer-events-none',
+                    'shadow-lg hover:shadow-xl',
                     sizeClasses[size],
                     className,
                 )}
@@ -101,7 +102,7 @@ const RecordButton = React.forwardRef<HTMLButtonElement, RecordButtonProps>(
                 <span
                     className={cn(
                         'relative z-10 flex items-center justify-center rounded-full',
-                        'bg-card',
+                        'bg-gradient-to-br from-card via-card to-card/90 shadow-inner',
                         size === 'sm' ? 'size-[4.5rem]' : size === 'lg' ? 'size-[8rem]' : 'size-24',
                     )}
                 >

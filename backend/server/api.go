@@ -7,7 +7,8 @@ import (
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
-	"github.com/parlyx/backend/providers"
+	"github.com/google/uuid"
+	"github.com/twinspeak/backend/providers"
 )
 
 type RestApi struct {
@@ -38,9 +39,12 @@ func (r *RestApi) healthcheck(c *fiber.Ctx) error {
 }
 
 func (r *RestApi) processSpeech(c *fiber.Ctx) error {
+	speechId := uuid.New()
+
 	type response struct {
-		Transcription string `json:"transcription"`
-		Translation   string `json:"translation"`
+		Id            uuid.UUID `json:"id"`
+		Transcription string    `json:"transcription"`
+		Translation   string    `json:"translation"`
 	}
 
 	inputLang := c.Query("inputLang")
@@ -61,6 +65,14 @@ func (r *RestApi) processSpeech(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError)
 	}
 
+	if transcription == "" {
+		return c.JSON(response{
+			Id:            speechId,
+			Transcription: transcription,
+			Translation:   "",
+		})
+	}
+
 	translation, err := r.translater.Translate(inputLang, outputLang, transcription)
 	if err != nil {
 		log.Errorf("Error while translating: %s", err.Error())
@@ -68,6 +80,7 @@ func (r *RestApi) processSpeech(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(response{
+		Id:            speechId,
 		Transcription: transcription,
 		Translation:   translation,
 	})
@@ -79,7 +92,7 @@ func NewRestApi(
 	host string,
 ) *RestApi {
 	server := fiber.New(fiber.Config{
-		AppName: "Parlyx Backend",
+		AppName: "TwinspeakBackend",
 	})
 
 	return &RestApi{

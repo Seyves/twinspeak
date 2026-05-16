@@ -1,4 +1,9 @@
 host: 0.0.0.0:8080
+google-oauth:
+  client-id: string
+  client-secret: string
+  auth-uri: string
+  token-uri: string
 transcription: 
   provider: faster_whisper
   url: http://whisper:9000

@@ -1,3 +1,4 @@
+import { Direction } from '@/definitions/messages'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 type UseWavRecorderOptions = {
@@ -5,13 +6,11 @@ type UseWavRecorderOptions = {
     numChannels?: number
 }
 
-type RecorderState = 'idle' | 'recording' | 'stopped'
-
 export function useRecordSpeech({
     sampleRate = 16000,
     numChannels = 1,
 }: UseWavRecorderOptions = {}) {
-    const [state, setState] = useState<RecorderState>('idle')
+    const [recordingDirection, setRecordingDirection] = useState<Direction | null>(null)
     const [recordingTime, setRecordingTime] = useState(0)
 
     const audioContextRef = useRef<AudioContext | null>(null)
@@ -60,68 +59,71 @@ export function useRecordSpeech({
         }
     }, [cleanup])
 
-    const start = useCallback(async () => {
-        if (isRecordingRef.current) {
-            return
-        }
-
-        chunksRef.current = []
-        totalLengthRef.current = 0
-
-        const stream = await navigator.mediaDevices.getUserMedia({
-            audio: {
-                channelCount: numChannels,
-                echoCancellation: false,
-                noiseSuppression: false,
-                autoGainControl: false,
-            },
-        })
-
-        const audioContext = new AudioContext({
-            sampleRate,
-            latencyHint: 'interactive',
-        })
-
-        await audioContext.audioWorklet.addModule('./recorder-processor.js')
-
-        const source = audioContext.createMediaStreamSource(stream)
-
-        const workletNode = new AudioWorkletNode(audioContext, 'wav-recorder-processor')
-
-        workletNode.port.onmessage = (event) => {
-            if (!isRecordingRef.current) {
+    const start = useCallback(
+        async (direction: Direction) => {
+            if (isRecordingRef.current) {
                 return
             }
 
-            const input = event.data as Float32Array
+            chunksRef.current = []
+            totalLengthRef.current = 0
 
-            const copy = new Float32Array(input.length)
-            copy.set(input)
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    channelCount: numChannels,
+                    echoCancellation: false,
+                    noiseSuppression: false,
+                    autoGainControl: false,
+                },
+            })
 
-            chunksRef.current.push(copy)
-            totalLengthRef.current += copy.length
-        }
+            const audioContext = new AudioContext({
+                sampleRate,
+                latencyHint: 'interactive',
+            })
 
-        source.connect(workletNode)
+            await audioContext.audioWorklet.addModule('./recorder-processor.js')
 
-        // Keeps processor alive across browsers
-        workletNode.connect(audioContext.destination)
+            const source = audioContext.createMediaStreamSource(stream)
 
-        streamRef.current = stream
-        sourceRef.current = source
-        workletNodeRef.current = workletNode
-        audioContextRef.current = audioContext
+            const workletNode = new AudioWorkletNode(audioContext, 'wav-recorder-processor')
 
-        isRecordingRef.current = true
+            workletNode.port.onmessage = (event) => {
+                if (!isRecordingRef.current) {
+                    return
+                }
 
-        startedAtRef.current = performance.now()
+                const input = event.data as Float32Array
 
-        timerRef.current = window.setInterval(() => {
-            setRecordingTime((performance.now() - startedAtRef.current) / 1000)
-        }, 100)
+                const copy = new Float32Array(input.length)
+                copy.set(input)
 
-        setState('recording')
-    }, [numChannels, sampleRate])
+                chunksRef.current.push(copy)
+                totalLengthRef.current += copy.length
+            }
+
+            source.connect(workletNode)
+
+            // Keeps processor alive across browsers
+            workletNode.connect(audioContext.destination)
+
+            streamRef.current = stream
+            sourceRef.current = source
+            workletNodeRef.current = workletNode
+            audioContextRef.current = audioContext
+
+            isRecordingRef.current = true
+
+            startedAtRef.current = performance.now()
+
+            timerRef.current = window.setInterval(() => {
+                setRecordingTime((performance.now() - startedAtRef.current) / 1000)
+            }, 100)
+
+            setRecordingDirection(direction)
+        },
+        [numChannels, sampleRate],
+    )
 
     const stop = useCallback(async (): Promise<Blob> => {
         if (!isRecordingRef.current) {
@@ -130,7 +132,7 @@ export function useRecordSpeech({
 
         isRecordingRef.current = false
 
-        setState('stopped')
+        setRecordingDirection(null)
 
         await cleanup()
 
@@ -179,9 +181,8 @@ export function useRecordSpeech({
         start,
         stop,
         download,
-        state,
         recordingTime,
-        isRecording: state === 'recording',
+        recordingDirection,
     }
 }
 

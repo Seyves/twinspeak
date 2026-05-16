@@ -5,24 +5,29 @@ import {
     ComboboxItem,
     ComboboxList,
 } from '@/components/ui/combobox'
-import { LangItem, langItems } from './lib/languages'
+import { LangItem, langItems, languages } from './lib/languages'
 
 export default function LangCombobox(props: {
-    lang: LangItem | null
-    setLang: React.Dispatch<React.SetStateAction<LangItem | null>>
+    lang: string
+    setLang: React.Dispatch<React.SetStateAction<string>>
 }) {
+    const item: LangItem = {
+        label: languages[props.lang],
+        value: props.lang,
+    }
+
     return (
         <Combobox
-            value={props.lang}
+            value={item}
             items={langItems}
-            onValueChange={props.setLang}
+            onValueChange={(val) => props.setLang(val?.value!)}
             itemToStringValue={(item: LangItem) => item.label}
         >
-            <ComboboxInput className="mx-2 min-w-24 max-w-36 *:text-lg" placeholder="Select a framework" />
+            <ComboboxInput className="*:text-base *:font-medium" placeholder="Select language" />
             <ComboboxContent>
                 <ComboboxList>
                     {(item: LangItem) => (
-                        <ComboboxItem className="text-lg" key={item.value} value={item}>
+                        <ComboboxItem key={item.value} value={item}>
                             {item.label}
                         </ComboboxItem>
                     )}

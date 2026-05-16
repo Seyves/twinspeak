@@ -1,4 +1,5 @@
 type ProcessSpeechResponse = {
+    id: string
     transcription: string
     translation: string
 }
@@ -7,7 +8,7 @@ export async function processSpeech(blob: Blob, inputLang: string, outputLang: s
     const formData = new FormData()
     formData.append('audio_file', blob)
 
-    const resp = await fetch(`http://localhost:8080/process-speech?inputLang=${inputLang}&outputLang=${outputLang}`, {
+    const resp = await fetch(`/process-speech/?inputLang=${inputLang}&outputLang=${outputLang}`, {
         method: 'POST',
         body: formData,
     })

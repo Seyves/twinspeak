@@ -1,4 +1,4 @@
-module github.com/parlyx/backend
+module github.com/twinspeak/backend
 
 go 1.23.0
 
