@@ -87,8 +87,6 @@ func (g *GoogleOauth) ProcessRedirect(
 		return "", "", fmt.Errorf("cannot get openid info: %w", err)
 	}
 
-	fmt.Println(userInfo.Email)
-
 	userId, err := g.queries.FindAccountFromGoogle(ctx, &userInfo.Id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		userId, err = g.CreateNewUser(ctx, userInfo)

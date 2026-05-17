@@ -45,7 +45,7 @@ func main() {
 	defer pool.Close()
 	queries := db.New(pool)
 
-	authm := auth.NewAuth(pool, queries)
+	authm := auth.NewAuth(pool, queries, cfg.HMACSecret)
 	googleOauth := auth.NewGoogleOauth(cfg.Google, queries, cfg.HMACSecret)
 
 	api := server.NewRestApi(cfg.Host, googleOauth, authm, transcriber, translator)

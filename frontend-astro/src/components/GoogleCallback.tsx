@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { googleProcessCallback, setAuthToken } from '../api/auth'
+import { googleProcessCallback } from '@/api/auth'
 
 export default function GoogleCallback() {
     async function processCallback() {
@@ -10,8 +10,7 @@ export default function GoogleCallback() {
         const state = query.get('state') as string
 
         try {
-            const resp = await googleProcessCallback(code, state)
-            setAuthToken(resp.accessToken)
+            await googleProcessCallback(code, state)
             window.location.replace('/')
         } catch (error) {
             console.error('OAuth callback failed:', error)

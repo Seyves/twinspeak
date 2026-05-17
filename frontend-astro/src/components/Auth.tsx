@@ -1,7 +1,10 @@
 import React, { useState } from 'react'
-import { AnimatedBackground } from './animated-background'
-import { ThemeProvider } from './theme-provider'
-import { googleSignIn } from '../api/auth'
+import { AnimatedBackground } from '@/components/animated-background'
+import { ThemeProvider } from '@/components/theme-provider'
+import { redirectToGoogleAuth } from '@/api/auth'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 type AuthMode = 'signin' | 'signup'
 
@@ -22,7 +25,7 @@ export default function Auth() {
     }
 
     const handleGoogleAuth = () => {
-        googleSignIn()
+        redirectToGoogleAuth()
     }
 
     return (
@@ -45,96 +48,72 @@ export default function Auth() {
 
                         {/* Mode Toggle */}
                         <div className="flex gap-2 mb-6 sm:mb-8 bg-muted p-1 rounded-lg">
-                            <button
+                            <Button
                                 onClick={() => setMode('signin')}
-                                className={`flex-1 py-2 px-4 rounded-md font-medium text-sm transition-all duration-200 ${
-                                    mode === 'signin'
-                                        ? 'bg-primary text-primary-foreground shadow-lg'
-                                        : 'text-muted-foreground hover:text-foreground'
-                                }`}
+                                variant={mode === 'signin' ? 'default' : 'ghost'}
+                                className="flex-1"
                             >
                                 Sign In
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                                 onClick={() => setMode('signup')}
-                                className={`flex-1 py-2 px-4 rounded-md font-medium text-sm transition-all duration-200 ${
-                                    mode === 'signup'
-                                        ? 'bg-primary text-primary-foreground shadow-lg'
-                                        : 'text-muted-foreground hover:text-foreground'
-                                }`}
+                                variant={mode === 'signup' ? 'default' : 'ghost'}
+                                className="flex-1"
                             >
                                 Sign Up
-                            </button>
+                            </Button>
                         </div>
 
                         {/* Form */}
                         <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
                             {/* Email Input */}
-                            <div>
-                                <label
-                                    htmlFor="email"
-                                    className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2"
-                                >
-                                    Email
-                                </label>
-                                <input
+                            <div className="space-y-1 sm:space-y-2">
+                                <Label htmlFor="email" className="text-xs sm:text-sm">Email</Label>
+                                <Input
                                     id="email"
                                     type="email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     placeholder="you@example.com"
-                                    className="w-full px-3 sm:px-4 py-2 text-sm bg-input border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
                                     required
                                 />
                             </div>
 
                             {/* Password Input */}
-                            <div>
-                                <label
-                                    htmlFor="password"
-                                    className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2"
-                                >
-                                    Password
-                                </label>
-                                <input
+                            <div className="space-y-1 sm:space-y-2">
+                                <Label htmlFor="password" className="text-xs sm:text-sm">Password</Label>
+                                <Input
                                     id="password"
                                     type="password"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     placeholder="••••••••"
-                                    className="w-full px-3 sm:px-4 py-2 text-sm bg-input border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
                                     required
                                 />
                             </div>
 
                             {/* Confirm Password (Sign Up Only) */}
                             {mode === 'signup' && (
-                                <div>
-                                    <label
-                                        htmlFor="confirmPassword"
-                                        className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2"
-                                    >
-                                        Confirm Password
-                                    </label>
-                                    <input
+                                <div className="space-y-1 sm:space-y-2">
+                                    <Label htmlFor="confirmPassword" className="text-xs sm:text-sm">Confirm Password</Label>
+                                    <Input
                                         id="confirmPassword"
                                         type="password"
                                         value={confirmPassword}
                                         onChange={(e) => setConfirmPassword(e.target.value)}
                                         placeholder="••••••••"
-                                        className="w-full px-3 sm:px-4 py-2 text-sm bg-input border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
                                         required
                                     />
                                 </div>
                             )}
 
                             {/* Submit Button */}
-                            <button
+                            <Button
                                 type="submit"
-                                className="w-full mt-4 sm:mt-6 py-2 px-4 text-sm sm:text-base bg-gradient-to-r from-primary to-accent hover:opacity-90 text-primary-foreground font-semibold rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg"
+                                className="w-full mt-4 sm:mt-6 bg-gradient-to-r from-primary to-accent hover:opacity-90 transform hover:scale-105 active:scale-95 shadow-lg"
                             >
                                 {mode === 'signin' ? 'Sign In' : 'Create Account'}
-                            </button>
+                            </Button>
                         </form>
 
                         {/* Divider */}
@@ -150,9 +129,10 @@ export default function Auth() {
                         </div>
 
                         {/* Google OAuth Button */}
-                        <button
+                        <Button
                             onClick={handleGoogleAuth}
-                            className="w-full py-2 px-4 text-sm sm:text-base border border-border/50 rounded-lg hover:bg-muted/50 transition-all duration-200 flex items-center justify-center gap-2 sm:gap-3 font-medium"
+                            variant="outline"
+                            className="w-full"
                         >
                             <svg
                                 className="w-4 h-4 sm:w-5 sm:h-5"
@@ -182,29 +162,31 @@ export default function Auth() {
                             <span className="sm:hidden">
                                 {mode === 'signin' ? 'Sign in' : 'Sign up'}
                             </span>
-                        </button>
+                        </Button>
 
                         {/* Footer Text */}
                         <p className="text-center text-xs text-muted-foreground mt-4 sm:mt-6">
                             {mode === 'signin' ? (
                                 <>
                                     Don't have an account?{' '}
-                                    <button
+                                    <Button
                                         onClick={() => setMode('signup')}
-                                        className="text-primary hover:text-accent font-medium transition-colors"
+                                        variant="link"
+                                        className="h-auto p-0 text-xs"
                                     >
                                         Sign up
-                                    </button>
+                                    </Button>
                                 </>
                             ) : (
                                 <>
                                     Already have an account?{' '}
-                                    <button
+                                    <Button
                                         onClick={() => setMode('signin')}
-                                        className="text-primary hover:text-accent font-medium transition-colors"
+                                        variant="link"
+                                        className="h-auto p-0 text-xs"
                                     >
                                         Sign in
-                                    </button>
+                                    </Button>
                                 </>
                             )}
                         </p>

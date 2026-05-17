@@ -66,7 +66,6 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		for {
 			mt, data, err := whisperConn.ReadMessage()
-			fmt.Println("Whisper msg")
 			if err != nil {
 				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 					fmt.Printf("WhisperLive WebSocket error: %v", err)

@@ -32,22 +32,39 @@ func (r *RestApi) Start() error {
 		AllowOrigins: "*",
 	}))
 
-	r.fiber.Get("/healthz", r.healthcheck)
-
 	api := r.fiber.Group("/api/v1")
-	api.Post("/process-speech", r.processSpeech)
 
-	api.Get("/auth/refresh", r.googleSignIn)
-	api.Get("/auth/google/sign-in", r.googleSignIn)
-	api.Post("/auth/google/callback", r.googleCallback)
+	auth := api.Group("/auth")
+	auth.Post("/refresh", r.refresh)
+	auth.Get("/google/sign-in", r.googleSignIn)
+	auth.Post("/google/callback", r.googleCallback)
+
+	papi := api.Group("/", r.authMiddleware)
+	papi.Post("/process-speech", r.processSpeech)
+	papi.Get("/ping", r.ping)
 
 	return r.fiber.Listen(r.host)
 }
 
-func (r *RestApi) healthcheck(c *fiber.Ctx) error {
-	return c.JSON(fiber.Map{
-		"status": "ok",
-	})
+func getSecureCookie(key string, value string) *fiber.Cookie {
+	cookie := new(fiber.Cookie)
+	cookie.Name = key
+	cookie.Value = value
+	cookie.HTTPOnly = true
+	cookie.Secure = true
+	cookie.SameSite = fiber.CookieSameSiteStrictMode
+	return cookie
+}
+
+func (r *RestApi) authMiddleware(c *fiber.Ctx) error {
+	accessToken := c.Cookies("access_token")
+	token, err := r.auth.ValidateAccessToken(c.Context(), time.Now(), accessToken)
+	if err != nil {
+		log.Errorf("Error in auth middleware: %s", err.Error())
+		return fiber.NewError(fiber.StatusUnauthorized, "invalid JWT")
+	}
+	c.Locals("token", token)
+	return c.Next()
 }
 
 func (r *RestApi) processSpeech(c *fiber.Ctx) error {
@@ -99,11 +116,7 @@ func (r *RestApi) processSpeech(c *fiber.Ctx) error {
 }
 
 func (r *RestApi) refresh(c *fiber.Ctx) error {
-	type response struct {
-		AccessToken string `json:"accessToken"`
-	}
-
-	refreshToken := c.Cookies("refresh_token", "")
+	refreshToken := c.Cookies("refresh_token")
 	if refreshToken == "" {
 		return fiber.NewError(fiber.StatusUnauthorized)
 	}
@@ -123,16 +136,15 @@ func (r *RestApi) refresh(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusUnauthorized)
 	}
 
-	cookie := new(fiber.Cookie)
-	cookie.Name = "refresh_token"
-	cookie.Value = refreshToken
-	cookie.HTTPOnly = true
-	cookie.Secure = true
-	cookie.SameSite = fiber.CookieSameSiteStrictMode
-	c.Cookie(cookie)
+	c.Cookie(getSecureCookie("refresh_token", refreshToken))
+	c.Cookie(getSecureCookie("access_token", accessToken))
 
-	return c.JSON(response{
-		AccessToken: accessToken,
+	return c.SendStatus(fiber.StatusOK)
+}
+
+func (r *RestApi) ping(c *fiber.Ctx) error {
+	return c.JSON(fiber.Map{
+		"status": "ok",
 	})
 }
 
@@ -144,9 +156,6 @@ func (r *RestApi) googleCallback(c *fiber.Ctx) error {
 	type request struct {
 		Code  string `json:"code"`
 		State string `json:"state"`
-	}
-	type response struct {
-		AccessToken string `json:"accessToken"`
 	}
 
 	var req request
@@ -165,17 +174,10 @@ func (r *RestApi) googleCallback(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError)
 	}
 
-	cookie := new(fiber.Cookie)
-	cookie.Name = "refresh_token"
-	cookie.Value = refreshToken
-	cookie.HTTPOnly = true
-	cookie.Secure = true
-	cookie.SameSite = fiber.CookieSameSiteStrictMode
-	c.Cookie(cookie)
+	c.Cookie(getSecureCookie("refresh_token", refreshToken))
+	c.Cookie(getSecureCookie("access_token", accessToken))
 
-	return c.JSON(response{
-		AccessToken: accessToken,
-	})
+	return c.SendStatus(fiber.StatusOK)
 }
 
 func NewRestApi(

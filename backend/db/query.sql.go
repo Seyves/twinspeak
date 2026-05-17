@@ -93,6 +93,26 @@ func (q *Queries) FindAccountFromGoogle(ctx context.Context, googleSub *string) 
 	return id, err
 }
 
+const getRefreshSession = `-- name: GetRefreshSession :one
+select id, user_id, token_hash, user_agent, ip, created_at, expires_at, revoked_at from refresh_sessions where token_hash = $1
+`
+
+func (q *Queries) GetRefreshSession(ctx context.Context, tokenHash []byte) (RefreshSession, error) {
+	row := q.db.QueryRow(ctx, getRefreshSession, tokenHash)
+	var i RefreshSession
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.TokenHash,
+		&i.UserAgent,
+		&i.Ip,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+		&i.RevokedAt,
+	)
+	return i, err
+}
+
 const getRefreshSessionForUpdate = `-- name: GetRefreshSessionForUpdate :one
 select id, user_id, token_hash, user_agent, ip, created_at, expires_at, revoked_at from refresh_sessions where token_hash = $1 for update
 `

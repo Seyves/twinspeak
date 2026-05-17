@@ -1,35 +1,36 @@
-// const backendUrl = import.meta.env.PUBLIC_BACKEND_URL as string
-const backendUrl = "https://localhost:4321/api/v1"
-const TOKEN_KEY = "authToken"
+import ky from 'ky'
 
-export function googleSignIn() {
-    return window.location.replace(`${backendUrl}/auth/google/sign-in`)
-}
+const BACKEND_URL = import.meta.env.PUBLIC_BACKEND_URL
 
-type GoogleProcessCallbackResp = {
-    accessToken: string
+const restrictedClient = ky.create({ prefix: BACKEND_URL })
+
+export function redirectToGoogleAuth() {
+    return window.location.replace(`${BACKEND_URL}/auth/google/sign-in`)
 }
 
 export async function googleProcessCallback(code: string, state: string) {
-    const resp = await fetch(`${backendUrl}/auth/google/callback`, {
-        method: 'POST',
-        body: JSON.stringify({
+    await restrictedClient.post('auth/google/callback', {
+        json: {
             code,
             state,
-        }),
+        },
     })
-
-    return (await resp.json()) as GoogleProcessCallbackResp
 }
 
-export function setAuthToken(token: string): void {
-    localStorage.setItem(TOKEN_KEY, token)
+export async function signIn(email: string, password: string) {
+    await restrictedClient.post('auth/sign-in', {
+        json: { email, password },
+    })
 }
 
-export function getAuthToken(): string | null {
-    return localStorage.getItem(TOKEN_KEY)
+export async function signUp(email: string, password: string) {
+    await restrictedClient.post('auth/sign-up', {
+        json: { email, password },
+    })
 }
 
-export function clearAuthToken(): void {
-    localStorage.removeItem(TOKEN_KEY)
+export async function refreshToken() {
+    await restrictedClient.post(`/auth/refresh`, {
+        json: { refreshToken },
+    })
 }

@@ -8,6 +8,7 @@ import (
 	"net/netip"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/twinspeak/backend/db"
@@ -16,7 +17,7 @@ import (
 
 const (
 	accessTokenLifetime  = time.Minute * 10
-	refreshTokenLifetime = time.Hour * 24 * 7
+	refreshTokenLifetime = time.Hour * 24 * 14
 )
 
 var ErrInvalidCredentials = errors.New("invalid credentials")
@@ -70,6 +71,16 @@ func (a *Auth) RotateAccessToken(
 	}
 
 	return accessToken, newRefreshToken, nil
+}
+
+func (a *Auth) ValidateAccessToken(ctx context.Context, now time.Time, accessToken string) (*jwt.Token, error) {
+	token, err := jwt.Parse(accessToken, func(t *jwt.Token) (any, error) {
+		return []byte(a.hmacSecret), nil
+	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse token: %w", err)
+	}
+	return token, nil
 }
 
 func (a *Auth) SignIn(ctx context.Context, now time.Time, email string, password string, userAgent string, ip *netip.Addr) (
@@ -147,9 +158,10 @@ func (a *Auth) SignUp(ctx context.Context, now time.Time, email string, password
 	return accessToken, refreshToken, nil
 }
 
-func NewAuth(db *pgxpool.Pool, queries *db.Queries) *Auth {
+func NewAuth(db *pgxpool.Pool, queries *db.Queries, hmacSecret string) *Auth {
 	return &Auth{
-		db:      db,
-		queries: queries,
+		hmacSecret: hmacSecret,
+		db:         db,
+		queries:    queries,
 	}
 }

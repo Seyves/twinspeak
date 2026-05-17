@@ -36,8 +36,8 @@ func createRefreshToken(ctx context.Context, now time.Time, queries *db.Queries,
 
 func createAccessToken(ctx context.Context, now time.Time, hmacSecret string, userId uuid.UUID) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"userId": userId,
-		"exp":    now.Add(accessTokenLifetime),
+		"userId": userId.String(),
+		"exp":    now.Add(accessTokenLifetime).Unix(),
 	})
 
 	tokenString, err := token.SignedString([]byte(hmacSecret))

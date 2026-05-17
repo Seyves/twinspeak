@@ -27,5 +27,8 @@ returning id;
 -- name: GetRefreshSessionForUpdate :one
 select * from refresh_sessions where token_hash = $1 for update;
 
+-- name: GetRefreshSession :one
+select * from refresh_sessions where token_hash = $1;
+
 -- name: RevokeRefreshSession :exec
 update refresh_sessions set revoked_at = now() where token_hash = $1;
