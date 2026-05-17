@@ -1,13 +1,17 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 
 	"github.com/gofiber/fiber/v2/log"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/spf13/viper"
+	"github.com/twinspeak/backend/auth"
+	"github.com/twinspeak/backend/db"
 	"github.com/twinspeak/backend/providers"
 	"github.com/twinspeak/backend/server"
-	"github.com/spf13/viper"
 )
 
 func main() {
@@ -33,7 +37,18 @@ func main() {
 		return
 	}
 
-	api := server.NewRestApi(transcriber, translator, cfg.Host)
+	pool, err := pgxpool.New(context.Background(), cfg.DBUrl)
+	if err != nil {
+		log.Errorf("Connecting to DB: %s", err.Error())
+		return
+	}
+	defer pool.Close()
+	queries := db.New(pool)
+
+	authm := auth.NewAuth(pool, queries)
+	googleOauth := auth.NewGoogleOauth(cfg.Google, queries, cfg.HMACSecret)
+
+	api := server.NewRestApi(cfg.Host, googleOauth, authm, transcriber, translator)
 	err = api.Start()
 	if err != nil {
 		log.Errorf("Starting server: %s", err.Error())
@@ -43,6 +58,9 @@ func main() {
 
 type Config struct {
 	Host          string                   `mapstructure:"host"`
+	HMACSecret    string                   `mapstructure:"hmac-secret"`
+	DBUrl         string                   `mapstructure:"db-url"`
+	Google        auth.GoogleOauthConfig   `mapstructure:"google"`
 	Transcription providers.ProviderConfig `mapstructure:"transcription"`
 	Translation   providers.ProviderConfig `mapstructure:"translation"`
 }

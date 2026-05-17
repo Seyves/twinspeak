@@ -1,9 +1,10 @@
 host: 0.0.0.0:8080
+db-url: string
+hmac-secret: string
 google-oauth:
   client-id: string
   client-secret: string
-  auth-uri: string
-  token-uri: string
+  redirect-url: string
 transcription: 
   provider: faster_whisper
   url: http://whisper:9000

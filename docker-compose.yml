@@ -1,56 +1,47 @@
 version: '3.9'
 services:
-  whisper:
-    # build:
-    #   context: ./services/WhisperLive
-    #   dockerfile: Dockerfile.gpu
-    image: onerahmet/openai-whisper-asr-webservice:latest-gpu
-    container_name: twinspeak-whisper
-    environment:
-      - ASR_MODEL=medium
-      - ASR_ENGINE=faster_whisper
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
-    ports:
-      - "9000:9000"
-    networks:
-      - twinspeak
-    # healthcheck:
-    #   test: ["CMD", "curl", "-f", "http://localhost:9090/health"]
-    #   interval: 10s
-    #   timeout: 5s
-    #   retries: 3
-    #   start_period: 30s
+  # whisper:
+  #   image: onerahmet/openai-whisper-asr-webservice:latest-gpu
+  #   container_name: twinspeak-whisper
+  #   environment:
+  #     - ASR_MODEL=medium
+  #     - ASR_ENGINE=faster_whisper
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: all
+  #             capabilities: [gpu]
+  #   ports:
+  #     - "9000:9000"
+  #   networks:
+  #     - twinspeak
 
-  libretranslate:
-    container_name: twinspeak-libretranslate
-    image: libretranslate/libretranslate:latest-cuda
-    ports:
-      - "5000:5000"
-    restart: unless-stopped
-    command: --disable-web-ui
-    environment:
-     # - LT_UPDATE_MODELS=True
-     - LT_DEBUG=True
-     - PUID=root
-    volumes:
-     - libretranslate:/app/db
-     - libretranslate:/root/.local:rw
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-    tty: true
-    networks:
-      - twinspeak
+  # libretranslate:
+  #   container_name: twinspeak-libretranslate
+  #   image: libretranslate/libretranslate:latest-cuda
+  #   ports:
+  #     - "5000:5000"
+  #   restart: unless-stopped
+  #   command: --disable-web-ui
+  #   environment:
+  #    # - LT_UPDATE_MODELS=True
+  #    - LT_DEBUG=True
+  #    - PUID=root
+  #   volumes:
+  #    - libretranslate:/app/db
+  #    - libretranslate:/root/.local:rw
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: 1
+  #             capabilities: [gpu]
+  #   tty: true
+  #   networks:
+  #     - twinspeak
 
   backend:
     build:
@@ -69,16 +60,33 @@ services:
     #     condition: service_healthy
     command: air -c .air.toml 
 
-  frontend:
+  # frontend:
+  #   image: node:22-alpine
+  #   container_name: twinspeak-frontend
+  #   working_dir: /app
+  #   environment:
+  #     - NODE_ENV=development
+  #   ports:
+  #     - "5173:5173"
+  #   volumes:
+  #     - ./frontend:/app
+  #     - /app/node_modules
+  #   networks:
+  #     - twinspeak
+  #   depends_on:
+  #     - backend
+  #   command: sh -c "corepack enable && corepack prepare pnpm@latest --activate && pnpm install && pnpm dev --host"
+
+  frontend-astro:
     image: node:22-alpine
-    container_name: twinspeak-frontend
+    container_name: twinspeak-frontend-astro
     working_dir: /app
     environment:
       - NODE_ENV=development
     ports:
-      - "5173:5173"
+      - "4321:4321"
     volumes:
-      - ./frontend:/app
+      - ./frontend-astro:/app
       - /app/node_modules
     networks:
       - twinspeak
@@ -86,9 +94,27 @@ services:
       - backend
     command: sh -c "corepack enable && corepack prepare pnpm@latest --activate && pnpm install && pnpm dev --host"
 
+  db:
+    image: postgres
+    container_name: twinspeak-db
+    restart: always
+    # set shared memory limit when using docker compose
+    shm_size: 128mb
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_DB: twinspeek
+    ports:
+      - "5432:5432"
+    networks:
+      - twinspeak
+    volumes:
+      - postgresdata:/var/lib/postgresql
+
 networks:
   twinspeak:
     driver: bridge
 
 volumes: 
   libretranslate: 
+  postgresdata:

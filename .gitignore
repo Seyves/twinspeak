@@ -2,6 +2,7 @@
 backend/tmp/
 backend/go.sum
 !backend/go.sum
+backend/config.yaml
 
 # Frontend
 frontend/node_modules/

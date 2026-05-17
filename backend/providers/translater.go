@@ -3,7 +3,7 @@ package providers
 import (
 	"fmt"
 
-	"github.com/twinspeak/backend/libretranslate"
+	"github.com/twinspeak/backend/providers/libretranslate"
 )
 
 type Translater interface {
