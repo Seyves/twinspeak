@@ -1,58 +1,58 @@
-import { Direction, Message, messageStatuses } from '@/definitions/messages'
-import { useState } from 'react'
+import { messageStatuses } from '@/definitions/chat'
+import type { ChatSide, Message } from '@/definitions/chat'
+import { useLayoutEffect, useState } from 'react'
+
+export type MessageController = (callback: (prev: Message) => Message) => void
+
+const maxMessages = 10
 
 export function useTwinChat() {
     const [messages, setMessages] = useState<Message[]>([])
 
-    function startRecordingMsg(direction: Direction): void {
+    useLayoutEffect(() => {
+        initMessages()
+    }, [])
+
+    function initMessages() {
+        const rawMessages = localStorage.getItem('messages') ?? '[]'
+        const cachedMessages = JSON.parse(rawMessages) as Message[]
+        setMessages(
+            cachedMessages.map((msg) => {
+                msg.status = messageStatuses.processed
+                return msg
+            }),
+        )
+    }
+
+    function startRecordingMsg(side: ChatSide) {
+        const id = crypto.randomUUID()
+
         setMessages((prev) => [
-            ...prev,
+            ...limitMessages(prev),
             {
-                id: crypto.randomUUID(),
-                direction: direction,
+                id: id,
+                sendedFrom: side,
                 status: messageStatuses.recording,
                 transcription: '',
                 translation: '',
             },
         ])
-    }
-
-    function startProcessingMsg(direction: Direction): void {
-        setMessages((prev) => {
-            const recordingIdx = prev.findIndex((msg) => {
-                return msg.status === messageStatuses.recording && msg.direction === direction
+        return function setMessage(c: (prev: Message) => Message) {
+            return setMessages((prev) => {
+                const result = prev.map((msg) => {
+                    if (msg.id !== id) return msg
+                    return c(msg)
+                })
+                localStorage.setItem('messages', JSON.stringify(result))
+                return result
             })
-            const msg = prev[recordingIdx]
-            prev = [...prev]
-            prev[recordingIdx] = {
-                ...msg,
-                status: messageStatuses.pending,
-            }
-            return prev
-        })
+        }
     }
 
-    function successProcessingMsg(direction: Direction, transcribed: string, translated: string) {
+    function errorProcessingMsg(side: ChatSide) {
         setMessages((prev) => {
             const processingIdx = prev.findIndex((msg) => {
-                return msg.status === messageStatuses.pending && msg.direction === direction
-            })
-            const msg = prev[processingIdx]
-            prev = [...prev]
-            prev[processingIdx] = {
-                ...msg,
-                transcription: transcribed,
-                translation: translated,
-                status: messageStatuses.processed,
-            }
-            return prev
-        })
-    }
-
-    function errorProcessingMsg(direction: Direction) {
-        setMessages((prev) => {
-            const processingIdx = prev.findIndex((msg) => {
-                return msg.status === messageStatuses.pending && msg.direction === direction
+                return msg.status === messageStatuses.pending && msg.sendedFrom === side
             })
             const msg = prev[processingIdx]
             prev = [...prev]
@@ -69,8 +69,14 @@ export function useTwinChat() {
     return {
         messages,
         startRecordingMsg,
-        startProcessingMsg,
-        successProcessingMsg,
-        errorProcessingMsg
+        errorProcessingMsg,
     }
+}
+
+function limitMessages(messages: Message[]) {
+    const limit = maxMessages - 1
+    if (messages.length > limit) {
+        return messages.slice(messages.length - limit)
+    }
+    return messages
 }

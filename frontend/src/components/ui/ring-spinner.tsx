@@ -1,11 +1,13 @@
-export default function Ring({ size = 24 }: { size?: number }) {
+import { cn } from '@/lib/utils'
+
+export default function Ring({ size = 24, className }: { size?: number; className?: string }) {
     return (
         <svg
             height={size}
-            stroke="currentColor"
             viewBox="0 0 44 44"
             width={size}
             xmlns="http://www.w3.org/2000/svg"
+            className={cn('stroke-background dark:stroke-foreground', className)}
         >
             <g fill="none" fillRule="evenodd" strokeWidth="2">
                 <circle cx="22" cy="22" r="1">

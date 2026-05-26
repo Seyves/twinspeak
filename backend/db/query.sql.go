@@ -15,24 +15,82 @@ import (
 
 const createAccountFromGoogle = `-- name: CreateAccountFromGoogle :one
 insert into users (
-    google_sub, email, email_verified, profile_picture
+    google_sub, email, email_verified, profile_picture, next_monthly_grant_at
 ) values (
-    $1, $2, true, $3
+    $1, $2, true, $3, $4
 )
 returning id
 `
 
 type CreateAccountFromGoogleParams struct {
-	GoogleSub      *string
-	Email          string
-	ProfilePicture *string
+	GoogleSub          *string
+	Email              string
+	ProfilePicture     *string
+	NextMonthlyGrantAt time.Time
 }
 
 func (q *Queries) CreateAccountFromGoogle(ctx context.Context, arg CreateAccountFromGoogleParams) (uuid.UUID, error) {
-	row := q.db.QueryRow(ctx, createAccountFromGoogle, arg.GoogleSub, arg.Email, arg.ProfilePicture)
+	row := q.db.QueryRow(ctx, createAccountFromGoogle,
+		arg.GoogleSub,
+		arg.Email,
+		arg.ProfilePicture,
+		arg.NextMonthlyGrantAt,
+	)
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const createCreditExpenses = `-- name: CreateCreditExpenses :exec
+insert into credit_expenses (
+    user_id, grant_id, spent, spent_at
+) values (
+    $1, $2, $3, $4
+)
+`
+
+type CreateCreditExpensesParams struct {
+	UserID  uuid.UUID
+	GrantID uuid.UUID
+	Spent   int32
+	SpentAt time.Time
+}
+
+func (q *Queries) CreateCreditExpenses(ctx context.Context, arg CreateCreditExpensesParams) error {
+	_, err := q.db.Exec(ctx, createCreditExpenses,
+		arg.UserID,
+		arg.GrantID,
+		arg.Spent,
+		arg.SpentAt,
+	)
+	return err
+}
+
+const createCreditGrant = `-- name: CreateCreditGrant :exec
+insert into credit_grants (
+    user_id, amount, remaining_amount, type, expires_at
+) values (
+    $1, $2, $3, $4, $5
+)
+`
+
+type CreateCreditGrantParams struct {
+	UserID          uuid.UUID
+	Amount          int32
+	RemainingAmount int32
+	Type            CreditGrantType
+	ExpiresAt       *time.Time
+}
+
+func (q *Queries) CreateCreditGrant(ctx context.Context, arg CreateCreditGrantParams) error {
+	_, err := q.db.Exec(ctx, createCreditGrant,
+		arg.UserID,
+		arg.Amount,
+		arg.RemainingAmount,
+		arg.Type,
+		arg.ExpiresAt,
+	)
+	return err
 }
 
 const createRefreshSession = `-- name: CreateRefreshSession :one
@@ -66,17 +124,18 @@ func (q *Queries) CreateRefreshSession(ctx context.Context, arg CreateRefreshSes
 }
 
 const createUser = `-- name: CreateUser :one
-insert into users (email, password_hash) values ($1, $2)
+insert into users (email, password_hash, next_monthly_grant_at) values ($1, $2, $3)
 returning id
 `
 
 type CreateUserParams struct {
-	Email        string
-	PasswordHash []byte
+	Email              string
+	PasswordHash       []byte
+	NextMonthlyGrantAt time.Time
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (uuid.UUID, error) {
-	row := q.db.QueryRow(ctx, createUser, arg.Email, arg.PasswordHash)
+	row := q.db.QueryRow(ctx, createUser, arg.Email, arg.PasswordHash, arg.NextMonthlyGrantAt)
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
@@ -91,6 +150,36 @@ func (q *Queries) FindAccountFromGoogle(ctx context.Context, googleSub *string) 
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const findCreditGrantForSpend = `-- name: FindCreditGrantForSpend :one
+select id, user_id, amount, remaining_amount, type, expires_at, created_at from credit_grants 
+where 
+    user_id = $1 and 
+    remaining_amount > 0 and
+    (expires_at = null or expires_at > $2)
+order by expires_at asc nulls last
+limit 1 for update
+`
+
+type FindCreditGrantForSpendParams struct {
+	UserID    uuid.UUID
+	ExpiresAt *time.Time
+}
+
+func (q *Queries) FindCreditGrantForSpend(ctx context.Context, arg FindCreditGrantForSpendParams) (CreditGrant, error) {
+	row := q.db.QueryRow(ctx, findCreditGrantForSpend, arg.UserID, arg.ExpiresAt)
+	var i CreditGrant
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Amount,
+		&i.RemainingAmount,
+		&i.Type,
+		&i.ExpiresAt,
+		&i.CreatedAt,
+	)
+	return i, err
 }
 
 const getRefreshSession = `-- name: GetRefreshSession :one
@@ -134,7 +223,7 @@ func (q *Queries) GetRefreshSessionForUpdate(ctx context.Context, tokenHash []by
 }
 
 const getUser = `-- name: GetUser :one
-select id, email, password_hash, email_verified, profile_picture, google_sub, created_at from users where email = $1
+select id, email, password_hash, email_verified, profile_picture, google_sub, created_at, next_monthly_grant_at from users where email = $1
 `
 
 func (q *Queries) GetUser(ctx context.Context, email string) (User, error) {
@@ -148,8 +237,114 @@ func (q *Queries) GetUser(ctx context.Context, email string) (User, error) {
 		&i.ProfilePicture,
 		&i.GoogleSub,
 		&i.CreatedAt,
+		&i.NextMonthlyGrantAt,
 	)
 	return i, err
+}
+
+const getUserByID = `-- name: GetUserByID :one
+select id, email, password_hash, email_verified, profile_picture, google_sub, created_at, next_monthly_grant_at from users where id = $1
+`
+
+func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByID, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.EmailVerified,
+		&i.ProfilePicture,
+		&i.GoogleSub,
+		&i.CreatedAt,
+		&i.NextMonthlyGrantAt,
+	)
+	return i, err
+}
+
+const insertHttpRequest = `-- name: InsertHttpRequest :exec
+insert into http_requests (
+    request_id,
+    method,
+    route,
+    path,
+    recieved_at,
+    duration_ms,
+    response_code,
+    request_headers_bytes,
+    request_body_bytes,
+    response_headers_bytes,
+    response_body_bytes,
+    ip,
+    user_agent,
+    error
+) values (
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
+)
+`
+
+type InsertHttpRequestParams struct {
+	RequestID            uuid.UUID
+	Method               string
+	Route                string
+	Path                 string
+	RecievedAt           time.Time
+	DurationMs           int32
+	ResponseCode         int16
+	RequestHeadersBytes  int32
+	RequestBodyBytes     int32
+	ResponseHeadersBytes int32
+	ResponseBodyBytes    int32
+	Ip                   netip.Addr
+	UserAgent            *string
+	Error                *string
+}
+
+func (q *Queries) InsertHttpRequest(ctx context.Context, arg InsertHttpRequestParams) error {
+	_, err := q.db.Exec(ctx, insertHttpRequest,
+		arg.RequestID,
+		arg.Method,
+		arg.Route,
+		arg.Path,
+		arg.RecievedAt,
+		arg.DurationMs,
+		arg.ResponseCode,
+		arg.RequestHeadersBytes,
+		arg.RequestBodyBytes,
+		arg.ResponseHeadersBytes,
+		arg.ResponseBodyBytes,
+		arg.Ip,
+		arg.UserAgent,
+		arg.Error,
+	)
+	return err
+}
+
+const insertSpeech = `-- name: InsertSpeech :exec
+insert into speeches (
+    user_id, in_lang, out_lang, started_at, ended_at
+) values (
+    $1, $2, $3, $4, $5
+)
+`
+
+type InsertSpeechParams struct {
+	UserID    uuid.UUID
+	InLang    string
+	OutLang   string
+	StartedAt time.Time
+	EndedAt   time.Time
+}
+
+func (q *Queries) InsertSpeech(ctx context.Context, arg InsertSpeechParams) error {
+	_, err := q.db.Exec(ctx, insertSpeech,
+		arg.UserID,
+		arg.InLang,
+		arg.OutLang,
+		arg.StartedAt,
+		arg.EndedAt,
+	)
+	return err
 }
 
 const revokeRefreshSession = `-- name: RevokeRefreshSession :exec
@@ -158,5 +353,21 @@ update refresh_sessions set revoked_at = now() where token_hash = $1
 
 func (q *Queries) RevokeRefreshSession(ctx context.Context, tokenHash []byte) error {
 	_, err := q.db.Exec(ctx, revokeRefreshSession, tokenHash)
+	return err
+}
+
+const updateGrant = `-- name: UpdateGrant :exec
+update credit_grants 
+set remaining_amount = $2
+where id = $1
+`
+
+type UpdateGrantParams struct {
+	ID              uuid.UUID
+	RemainingAmount int32
+}
+
+func (q *Queries) UpdateGrant(ctx context.Context, arg UpdateGrantParams) error {
+	_, err := q.db.Exec(ctx, updateGrant, arg.ID, arg.RemainingAmount)
 	return err
 }

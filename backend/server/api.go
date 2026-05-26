@@ -1,18 +1,22 @@
 package server
 
 import (
-	"bytes"
-	"encoding/json"
-	"net/netip"
 	"time"
 
+	"github.com/gofiber/contrib/websocket"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/google/uuid"
 	"github.com/twinspeak/backend/auth"
-	"github.com/twinspeak/backend/providers"
+	"github.com/twinspeak/backend/metrics"
+	"github.com/twinspeak/backend/pipeline"
+)
+
+const (
+	internalServerError = "internal server error"
+	invalidRequestBody  = "invalid request body"
 )
 
 type RestApi struct {
@@ -20,8 +24,8 @@ type RestApi struct {
 	fiber       *fiber.App
 	googleOauth *auth.GoogleOauth
 	auth        *auth.Auth
-	transcriber providers.Transcriber
-	translater  providers.Translater
+	pipeline    pipeline.SpeechPipeline
+	metrics     *metrics.Metrics
 }
 
 func (r *RestApi) Start() error {
@@ -33,113 +37,24 @@ func (r *RestApi) Start() error {
 	}))
 
 	api := r.fiber.Group("/api/v1")
+	api.Use(r.requestIdMiddleware)
+	api.Use(r.metricsMiddleware)
 
-	auth := api.Group("/auth")
-	auth.Post("/refresh", r.refresh)
-	auth.Get("/google/sign-in", r.googleSignIn)
-	auth.Post("/google/callback", r.googleCallback)
+	api.Post("/auth/sign-in", r.signIn)
+	api.Post("/auth/sign-up", r.signUp)
+	api.Get("/auth/google/sign-in", r.googleSignIn)
+	api.Post("/auth/google/callback", r.googleCallback)
+	api.Post("/auth/refresh", r.refresh)
+	api.Post("/auth/logout", r.logout)
 
-	papi := api.Group("/", r.authMiddleware)
-	papi.Post("/process-speech", r.processSpeech)
-	papi.Get("/ping", r.ping)
+	api.Get("/supported-languages", r.authMiddleware, r.supportedLanguages)
+	api.Get("/ws-ticket", r.authMiddleware, r.getWSTiket)
+	api.Get("/ping", r.authMiddleware, r.ping)
+	api.Get("/me", r.authMiddleware, r.me)
+
+	api.Get("/ws/session", r.wsAuthMiddleware, websocket.New(r.startSession))
 
 	return r.fiber.Listen(r.host)
-}
-
-func getSecureCookie(key string, value string) *fiber.Cookie {
-	cookie := new(fiber.Cookie)
-	cookie.Name = key
-	cookie.Value = value
-	cookie.HTTPOnly = true
-	cookie.Secure = true
-	cookie.SameSite = fiber.CookieSameSiteStrictMode
-	return cookie
-}
-
-func (r *RestApi) authMiddleware(c *fiber.Ctx) error {
-	accessToken := c.Cookies("access_token")
-	token, err := r.auth.ValidateAccessToken(c.Context(), time.Now(), accessToken)
-	if err != nil {
-		log.Errorf("Error in auth middleware: %s", err.Error())
-		return fiber.NewError(fiber.StatusUnauthorized, "invalid JWT")
-	}
-	c.Locals("token", token)
-	return c.Next()
-}
-
-func (r *RestApi) processSpeech(c *fiber.Ctx) error {
-	speechId := uuid.New()
-
-	type response struct {
-		Id            uuid.UUID `json:"id"`
-		Transcription string    `json:"transcription"`
-		Translation   string    `json:"translation"`
-	}
-
-	inputLang := c.Query("inputLang")
-	if inputLang == "" {
-		return fiber.NewError(400, "No inputLang query provided")
-	}
-
-	outputLang := c.Query("outputLang")
-	if outputLang == "" {
-		return fiber.NewError(400, "No outputLang query provided")
-	}
-
-	body := c.Request().Body()
-
-	transcription, err := r.transcriber.Transcribe(inputLang, c.Get("Content-Type"), c.Get("Content-Length"), bytes.NewReader(body))
-	if err != nil {
-		log.Errorf("Error while transcribing: %s", err.Error())
-		return fiber.NewError(fiber.StatusInternalServerError)
-	}
-
-	if transcription == "" {
-		return c.JSON(response{
-			Id:            speechId,
-			Transcription: transcription,
-			Translation:   "",
-		})
-	}
-
-	translation, err := r.translater.Translate(inputLang, outputLang, transcription)
-	if err != nil {
-		log.Errorf("Error while translating: %s", err.Error())
-		return fiber.NewError(fiber.StatusInternalServerError)
-	}
-
-	return c.JSON(response{
-		Id:            speechId,
-		Transcription: transcription,
-		Translation:   translation,
-	})
-}
-
-func (r *RestApi) refresh(c *fiber.Ctx) error {
-	refreshToken := c.Cookies("refresh_token")
-	if refreshToken == "" {
-		return fiber.NewError(fiber.StatusUnauthorized)
-	}
-
-	userAgent := string(c.Context().UserAgent())
-	ip, _ := netip.ParseAddr(c.IP())
-
-	accessToken, refreshToken, err := r.auth.RotateAccessToken(
-		c.Context(),
-		time.Now(),
-		refreshToken,
-		userAgent,
-		&ip,
-	)
-	if err != nil {
-		log.Errorf("Error while rotating access token: %s", err.Error())
-		return fiber.NewError(fiber.StatusUnauthorized)
-	}
-
-	c.Cookie(getSecureCookie("refresh_token", refreshToken))
-	c.Cookie(getSecureCookie("access_token", accessToken))
-
-	return c.SendStatus(fiber.StatusOK)
 }
 
 func (r *RestApi) ping(c *fiber.Ctx) error {
@@ -147,45 +62,38 @@ func (r *RestApi) ping(c *fiber.Ctx) error {
 		"status": "ok",
 	})
 }
-
-func (r *RestApi) googleSignIn(c *fiber.Ctx) error {
-	return c.Redirect(r.googleOauth.GetSignInUrl(), fiber.StatusTemporaryRedirect)
+func (r *RestApi) supportedLanguages(c *fiber.Ctx) error {
+	languages := r.pipeline.SupportedLanguages(c.Context())
+	return c.JSON(languages)
 }
 
-func (r *RestApi) googleCallback(c *fiber.Ctx) error {
-	type request struct {
-		Code  string `json:"code"`
-		State string `json:"state"`
-	}
-
-	var req request
-	err := json.Unmarshal(c.Request().Body(), &req)
+func (r *RestApi) me(c *fiber.Ctx) error {
+	userID := c.Locals("userId").(uuid.UUID)
+	user, err := r.auth.GetCurrentUser(c.Context(), userID)
 	if err != nil {
-		log.Errorf("Error unmarshalling request body: %s", err.Error())
-		return fiber.NewError(fiber.StatusBadRequest)
+		log.Errorf("Error getting current user: %s", err.Error())
+		return fiber.NewError(fiber.StatusInternalServerError, internalServerError)
 	}
 
-	userAgent := string(c.Context().UserAgent())
-	ip, _ := netip.ParseAddr(c.IP())
-
-	accessToken, refreshToken, err := r.googleOauth.ProcessRedirect(c.Context(), req.Code, req.State, userAgent, &ip)
-	if err != nil {
-		log.Errorf("Error while processing redirect: %s", err.Error())
-		return fiber.NewError(fiber.StatusInternalServerError)
+	type response struct {
+		Email          string    `json:"email"`
+		ProfilePicture *string   `json:"profilePicture"`
+		CreatedAt      time.Time `json:"createdAt"`
 	}
 
-	c.Cookie(getSecureCookie("refresh_token", refreshToken))
-	c.Cookie(getSecureCookie("access_token", accessToken))
-
-	return c.SendStatus(fiber.StatusOK)
+	return c.JSON(response{
+		Email:          user.Email,
+		ProfilePicture: user.ProfilePicture,
+		CreatedAt:      user.CreatedAt,
+	})
 }
 
 func NewRestApi(
 	host string,
 	googleOauth *auth.GoogleOauth,
 	auth *auth.Auth,
-	transcriber providers.Transcriber,
-	translater providers.Translater,
+	pipeline pipeline.SpeechPipeline,
+	metrics *metrics.Metrics,
 ) *RestApi {
 	server := fiber.New(fiber.Config{
 		AppName: "TwinspeakBackend",
@@ -196,7 +104,7 @@ func NewRestApi(
 		fiber:       server,
 		googleOauth: googleOauth,
 		auth:        auth,
-		transcriber: transcriber,
-		translater:  translater,
+		pipeline:    pipeline,
+		metrics:     metrics,
 	}
 }

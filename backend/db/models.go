@@ -5,11 +5,93 @@
 package db
 
 import (
+	"database/sql/driver"
+	"fmt"
 	"net/netip"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+type CreditGrantType string
+
+const (
+	CreditGrantTypeMonthly CreditGrantType = "monthly"
+	CreditGrantTypeTopup   CreditGrantType = "topup"
+)
+
+func (e *CreditGrantType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = CreditGrantType(s)
+	case string:
+		*e = CreditGrantType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for CreditGrantType: %T", src)
+	}
+	return nil
+}
+
+type NullCreditGrantType struct {
+	CreditGrantType CreditGrantType
+	Valid           bool // Valid is true if CreditGrantType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullCreditGrantType) Scan(value interface{}) error {
+	if value == nil {
+		ns.CreditGrantType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.CreditGrantType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullCreditGrantType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.CreditGrantType), nil
+}
+
+type CreditExpense struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	GrantID   uuid.UUID
+	Spent     int32
+	SpentAt   time.Time
+	CreatedAt time.Time
+}
+
+type CreditGrant struct {
+	ID              uuid.UUID
+	UserID          uuid.UUID
+	Amount          int32
+	RemainingAmount int32
+	Type            CreditGrantType
+	ExpiresAt       *time.Time
+	CreatedAt       time.Time
+}
+
+type HttpRequest struct {
+	ID                   uuid.UUID
+	RequestID            uuid.UUID
+	Method               string
+	Route                string
+	Path                 string
+	RecievedAt           time.Time
+	DurationMs           int32
+	ResponseCode         int16
+	RequestHeadersBytes  int32
+	RequestBodyBytes     int32
+	ResponseHeadersBytes int32
+	ResponseBodyBytes    int32
+	Ip                   netip.Addr
+	UserAgent            *string
+	Error                *string
+	CreatedAt            *time.Time
+}
 
 type RefreshSession struct {
 	ID        uuid.UUID
@@ -22,12 +104,22 @@ type RefreshSession struct {
 	RevokedAt *time.Time
 }
 
+type Speech struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	InLang    string
+	OutLang   string
+	StartedAt time.Time
+	EndedAt   time.Time
+}
+
 type User struct {
-	ID             uuid.UUID
-	Email          string
-	PasswordHash   []byte
-	EmailVerified  bool
-	ProfilePicture *string
-	GoogleSub      *string
-	CreatedAt      time.Time
+	ID                 uuid.UUID
+	Email              string
+	PasswordHash       []byte
+	EmailVerified      bool
+	ProfilePicture     *string
+	GoogleSub          *string
+	CreatedAt          time.Time
+	NextMonthlyGrantAt time.Time
 }

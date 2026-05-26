@@ -284,6 +284,7 @@ export {
   ComboboxInput,
   ComboboxContent,
   ComboboxList,
+  ComboboxClear,
   ComboboxItem,
   ComboboxGroup,
   ComboboxLabel,

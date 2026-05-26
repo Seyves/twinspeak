@@ -1,0 +1,47 @@
+version: '3.9'
+
+services:
+  db:
+    image: postgres:18
+    container_name: twinspeak-test-db
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_DB: twinspeek
+    ports:
+      - "5432:5432"
+    networks:
+      - twinspeak-test
+    volumes:
+      - postgresdata:/var/lib/postgresql
+      - ./backend/schema.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d twinspeek"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: twinspeak-test-backend
+    environment:
+      - DB_URL=postgres://postgres:postgres@db:5432/twinspeek
+    volumes:
+      - ./backend:/app
+      - /app/tmp
+    networks:
+      - twinspeak-test
+    depends_on:
+      db:
+        condition: service_healthy
+    command: sh -c "go test ./..."
+
+networks:
+  twinspeak-test:
+    driver: bridge
+
+volumes:
+  postgresdata:

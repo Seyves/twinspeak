@@ -2,6 +2,7 @@ package libretranslate
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,25 +16,25 @@ const (
 	translateEndpoint = "/translate"
 )
 
-type libretranslate struct {
+type Client struct {
 	url    *url.URL
 	client *http.Client
 }
 
-type translateReqBody struct {
+type TranslateReq struct {
 	Q      string `json:"q"`
 	Source string `json:"source"`
 	Target string `json:"target"`
 }
 
-type translateRespBody struct {
+type TranslateResp struct {
 	TranslatedText string `json:"translatedText"`
 }
 
-func (w *libretranslate) Translate(inputLang string, outputLang string, text string) (string, error) {
+func (w *Client) Translate(ctx context.Context, inputLang string, outputLang string, text string) (string, error) {
 	url := w.url.JoinPath(translateEndpoint)
 
-	reqBody := translateReqBody{
+	reqBody := TranslateReq{
 		Q:      text,
 		Source: inputLang,
 		Target: outputLang,
@@ -44,10 +45,17 @@ func (w *libretranslate) Translate(inputLang string, outputLang string, text str
 	}
 	reqBodyReader := bytes.NewReader(reqBodyBytes)
 
-	resp, err := w.client.Post(url.String(), "application/json", reqBodyReader)
+	req, err := http.NewRequestWithContext(ctx, "POST", url.String(), reqBodyReader)
+	if err != nil {
+		return "", fmt.Errorf("cannot create request: %w", err)
+	}
+	req.Header.Add("Content-Type", "application/json")
+
+	resp, err := w.client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("cannot send request: %w", err)
 	}
+	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -58,7 +66,7 @@ func (w *libretranslate) Translate(inputLang string, outputLang string, text str
 		return "", fmt.Errorf("error status code: %d, body: %s", resp.StatusCode, string(body))
 	}
 
-	var parsedBody translateRespBody
+	var parsedBody TranslateResp
 	err = json.Unmarshal(body, &parsedBody)
 	if err != nil {
 		return "", fmt.Errorf("cannot unmarshal response body: %w", err)
@@ -67,7 +75,7 @@ func (w *libretranslate) Translate(inputLang string, outputLang string, text str
 	return parsedBody.TranslatedText, nil
 }
 
-func NewClient(path string) (*libretranslate, error) {
+func NewClient(path string) (*Client, error) {
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 	}
@@ -77,7 +85,7 @@ func NewClient(path string) (*libretranslate, error) {
 		return nil, fmt.Errorf("cannot parse url %s: %w", path, err)
 	}
 
-	return &libretranslate{
+	return &Client{
 		url:    parsedUrl,
 		client: client,
 	}, nil

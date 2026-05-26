@@ -1,4 +1,4 @@
-import { Direction } from '@/definitions/messages'
+import type { Direction } from '@/definitions/chat'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 type UseWavRecorderOptions = {
