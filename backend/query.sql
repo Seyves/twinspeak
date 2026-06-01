@@ -5,19 +5,31 @@ select * from users where email = $1;
 select * from users where id = $1;
 
 -- name: CreateUser :one
-insert into users (email, password_hash, next_monthly_grant_at) values ($1, $2, $3)
+insert into users (email, password_hash) values ($1, $2)
 returning id;
 
 -- name: CreateAccountFromGoogle :one
 insert into users (
-    google_sub, email, email_verified, profile_picture, next_monthly_grant_at
+    google_sub, email, email_verified, profile_picture
 ) values (
-    $1, $2, true, $3, $4
+    $1, $2, true, $3
 )
 returning id;
 
 -- name: FindAccountFromGoogle :one
 select id from users where google_sub = $1;
+
+-- name: CreateSubscription :one
+insert into subscriptions (user_id, next_monthly_grant_at) values ($1, $2)
+returning id;
+
+-- name: GetExpiredSubscriptions :many
+select user_id from subscriptions where next_monthly_grant_at >= $1;
+
+-- name: UpdateSubscription :exec
+update subscriptions
+set next_monthly_grant_at = $2
+where user_id = $1;
 
 -- name: CreateRefreshSession :one
 insert into refresh_sessions (
@@ -42,6 +54,15 @@ insert into credit_grants (
 ) values (
     $1, $2, $3, $4, $5
 );
+
+-- name: FindCreditGrantForSpend :one
+select * from credit_grants 
+where 
+    user_id = $1 and 
+    remaining_amount > 0 and
+    (expires_at = null or expires_at > $2)
+order by expires_at asc nulls last
+limit 1 for update;
 
 -- name: FindCreditGrantForSpend :one
 select * from credit_grants 

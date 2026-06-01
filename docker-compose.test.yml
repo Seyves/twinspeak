@@ -32,6 +32,8 @@ services:
     volumes:
       - ./backend:/app
       - /app/tmp
+      - go-pkg-cache:/root/go/pkg/mod
+      - go-build-cache:/root/.cache/go-build
     networks:
       - twinspeak-test
     depends_on:
@@ -45,3 +47,5 @@ networks:
 
 volumes:
   postgresdata:
+  go-pkg-cache:
+  go-build-cache:

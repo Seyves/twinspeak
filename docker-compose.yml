@@ -1,47 +1,47 @@
 version: '3.9'
 services:
-  whisper:
-    image: onerahmet/openai-whisper-asr-webservice:latest-gpu
-    container_name: twinspeak-whisper
-    environment:
-      - ASR_MODEL=medium
-      - ASR_ENGINE=faster_whisper
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
-    ports:
-      - "9000:9000"
-    networks:
-      - twinspeak
-
-  libretranslate:
-    container_name: twinspeak-libretranslate
-    image: libretranslate/libretranslate:latest-cuda
-    ports:
-      - "5000:5000"
-    restart: unless-stopped
-    command: --disable-web-ui
-    environment:
-     - LT_UPDATE_MODELS=True
-     - LT_DEBUG=True
-     - PUID=root
-    volumes:
-     - libretranslate:/app/db
-     - libretranslate:/root/.local:rw
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-    tty: true
-    networks:
-      - twinspeak
+  # whisper:
+  #   image: onerahmet/openai-whisper-asr-webservice:latest-gpu
+  #   container_name: twinspeak-whisper
+  #   environment:
+  #     - ASR_MODEL=medium
+  #     - ASR_ENGINE=faster_whisper
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: all
+  #             capabilities: [gpu]
+  #   ports:
+  #     - "9000:9000"
+  #   networks:
+  #     - twinspeak
+  #
+  # libretranslate:
+  #   container_name: twinspeak-libretranslate
+  #   image: libretranslate/libretranslate:latest-cuda
+  #   ports:
+  #     - "5000:5000"
+  #   restart: unless-stopped
+  #   command: --disable-web-ui
+  #   environment:
+  #    - LT_UPDATE_MODELS=True
+  #    - LT_DEBUG=True
+  #    - PUID=root
+  #   volumes:
+  #    - libretranslate:/app/db
+  #    - libretranslate:/root/.local:rw
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: 1
+  #             capabilities: [gpu]
+  #   tty: true
+  #   networks:
+  #     - twinspeak
 
   backend:
     build:
@@ -95,5 +95,5 @@ networks:
     driver: bridge
 
 volumes: 
-  libretranslate: 
+  # libretranslate: 
   postgresdata:

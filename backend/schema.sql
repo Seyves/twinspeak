@@ -6,8 +6,7 @@ create table users (
     email_verified boolean default false not null,
     profile_picture text,
     google_sub text unique,
-    created_at timestamptz(3) not null default now(),
-    next_monthly_grant_at timestamptz(3) not null
+    created_at timestamptz(3) not null default now()
 );
 create unique index idx_users_google_sub on users(google_sub);
 create unique index idx_users_email on users(email);
@@ -24,6 +23,13 @@ create table refresh_sessions (
     revoked_at timestamptz(3)
 );
 create unique index idx_refresh_token_hash on refresh_sessions(token_hash);
+
+-- Table for managing user subscriptions
+create table subscriptions (
+    id uuid primary key default uuidv7(),
+    user_id uuid not null references users(id) on delete cascade,
+    next_monthly_grant_at timestamptz(3) not null
+);
 
 -- Table for managing user credit grants
 create type credit_grant_type as enum('monthly', 'topup');
