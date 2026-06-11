@@ -14,10 +14,12 @@ sql:
         out: "internal/db"
         sql_package: "pgx/v5"
         overrides:
+          # UUID convertion
           - db_type: "uuid"
             go_type:
               import: "github.com/google/uuid"
               type: "UUID"
+          # string convertion
           - db_type: "text"
             nullable: false
             go_type: string
@@ -26,6 +28,7 @@ sql:
             go_type: 
               type: string
               pointer: true
+          # time convertion
           - db_type: "timestamptz"
             go_type: "time.Time"
           - db_type: "timestamptz"

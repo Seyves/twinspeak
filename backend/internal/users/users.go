@@ -13,15 +13,17 @@ import (
 	"github.com/twinspeak/backend/internal/db"
 	"github.com/twinspeak/backend/internal/googleauth"
 	"github.com/twinspeak/backend/internal/metrics"
+	"github.com/twinspeak/backend/internal/preferences"
 )
 
 type Service struct {
-	db         *pgxpool.Pool
-	queries    *db.Queries
-	auth       *auth.Module
-	googleAuth *googleauth.Module
-	billing    *billing.Module
-	metrics    *metrics.Module
+	db          *pgxpool.Pool
+	queries     *db.Queries
+	auth        *auth.Module
+	googleAuth  *googleauth.Module
+	preferences *preferences.Module
+	billing     *billing.Module
+	metrics     *metrics.Module
 }
 
 func (s *Service) RotateSession(ctx context.Context, now time.Time, refreshToken string) (
@@ -37,12 +39,22 @@ func (s *Service) RotateSession(ctx context.Context, now time.Time, refreshToken
 
 	userId, err := s.auth.ValidateSession(ctx, qtx, refreshToken)
 	if err != nil {
-		return nil, nil, fmt.Errorf("during checking session compromise: %w", err)
+		return nil, nil, fmt.Errorf("during checking session: %w", err)
+	}
+
+	err = s.auth.RevokeSession(ctx, qtx, refreshToken)
+	if err != nil {
+		return nil, nil, fmt.Errorf("cannot revoke session: %w", err)
 	}
 
 	accessToken, newRefreshToken, err = s.auth.StartSession(ctx, qtx, userId, now)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot start session: %w", err)
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("cannot commit db transaction: %w", err)
 	}
 
 	return accessToken, newRefreshToken, nil
@@ -83,6 +95,11 @@ func (s *Service) SignUp(ctx context.Context, now time.Time, email string, passw
 		return nil, nil, fmt.Errorf("cannot create user: %w", err)
 	}
 
+	err = s.preferences.CreatePreferences(ctx, qtx, userId)
+	if err != nil {
+		return nil, nil, fmt.Errorf("cannot create user preferences: %w", err)
+	}
+
 	err = s.billing.StartSubscription(ctx, qtx, userId, now)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot start subscription: %w", err)
@@ -100,12 +117,20 @@ func (s *Service) SignUp(ctx context.Context, now time.Time, email string, passw
 	return accessToken, refreshToken, nil
 }
 
+func (s *Service) GetPreferences(ctx context.Context, userId uuid.UUID) (*db.Preference, error) {
+	return s.preferences.GetPreferences(ctx, s.queries, userId)
+}
+
+func (s *Service) UpdatePreferences(ctx context.Context, params db.UpdateUserPrefsParams) error {
+	return s.preferences.UpdatePreferences(ctx, s.queries, params)
+}
+
 func (s *Service) GoogleCallback(ctx context.Context, now time.Time, code string, sessionState string, state string) (
 	accessToken *auth.Token, refreshToken *auth.Token, err error,
 ) {
 	openIdInfo, err := s.googleAuth.Callback(ctx, code, sessionState, state)
 	if err != nil {
-		return nil, nil, fmt.Errorf("cannot exchange code: %w", err)
+		return nil, nil, fmt.Errorf("during google callback: %w", err)
 	}
 
 	tx, err := s.db.Begin(ctx)
@@ -141,6 +166,14 @@ func (s *Service) GoogleCallback(ctx context.Context, now time.Time, code string
 	}
 
 	return accessToken, refreshToken, nil
+}
+
+func (s *Service) BuyTopup(ctx context.Context, now time.Time, userId uuid.UUID, amount int32) error {
+	err := s.billing.BuyTopup(ctx, s.queries, userId, now, amount)
+	if err != nil {
+		return fmt.Errorf("cannot buy topup: %w", err)
+	}
+	return nil
 }
 
 func (s *Service) RenewSubscriptionsWorker(ctx context.Context, now time.Time) error {
@@ -179,15 +212,7 @@ func (s *Service) StartSpeech(
 	return nil
 }
 
-func (s *Service) EndSpeech(
-	ctx context.Context,
-	now time.Time,
-	userId uuid.UUID,
-	inLang string,
-	outLang string,
-	startedAt time.Time,
-	endedAt time.Time,
-) error {
+func (s *Service) EndSpeech(ctx context.Context, now time.Time, params db.InsertSpeechParams) error {
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("cannot start db transaction: %w", err)
@@ -196,18 +221,12 @@ func (s *Service) EndSpeech(
 
 	qtx := s.queries.WithTx(tx)
 
-	seconds := endedAt.Sub(startedAt).Seconds()
-	err = s.billing.SpendCredits(ctx, qtx, userId, now, int32(seconds))
+	seconds := params.EndedAt.Sub(params.StartedAt).Seconds()
+	err = s.billing.SpendCredits(ctx, qtx, params.UserID, now, int32(seconds))
 	if err != nil {
 		return fmt.Errorf("cannot spend credits: %w", err)
 	}
-	err = s.metrics.CreateSpeechMetric(context.Background(), qtx, db.InsertSpeechParams{
-		UserID:    userId,
-		InLang:    inLang,
-		OutLang:   outLang,
-		StartedAt: startedAt,
-		EndedAt:   endedAt,
-	})
+	err = s.metrics.CreateSpeechMetric(context.Background(), qtx, params)
 	if err != nil {
 		return fmt.Errorf("cannot create metric: %w", err)
 	}
@@ -217,6 +236,10 @@ func (s *Service) EndSpeech(
 		return fmt.Errorf("cannot commit db transaction: %w", err)
 	}
 	return nil
+}
+
+func (s *Service) GetSpeeches(ctx context.Context, userId uuid.UUID) ([]db.Speech, error) {
+	return s.metrics.GetSpeeches(ctx, s.queries, userId)
 }
 
 func (s *Service) CreateHttpRequestMetric(ctx context.Context, data db.InsertHttpRequestParams) error {
@@ -240,6 +263,13 @@ func (s *Service) GoogleRedirect() (url string, state string, err error) {
 // TODO
 func (s *Service) GetCurrentUser(ctx context.Context, userId uuid.UUID) (db.User, error) {
 	return s.queries.GetUserByID(ctx, userId)
+}
+
+func (s *Service) GetCreditGrants(ctx context.Context, userId uuid.UUID, now time.Time) ([]db.CreditGrant, error) {
+	return s.queries.GetUserCreditGrants(ctx, db.GetUserCreditGrantsParams{
+		UserID:    userId,
+		ExpiresAt: &now,
+	})
 }
 
 func (s *Service) Logout(ctx context.Context, refreshToken string) error {

@@ -1,0 +1,11 @@
+host: 0.0.0.0:8080
+db-url: postgresql://postgres:postgres@localhost:5432/twinspeek
+hmac-secret: aboba
+pipeline: gladia
+gladia-key: ecf497cb-79e2-452f-a4fc-278dd12afadd
+faster-whisper-url: http://whisper:9000
+libretranslate-url: http://libretranslate:5000
+google:
+  client-id: 229914232766-n45dpg5dtohqqbv5k7hnsi2khd5egbb8.apps.googleusercontent.com
+  client-secret: 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
+  redirect-url: https://localhost:4321/auth/google/callback

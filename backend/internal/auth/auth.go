@@ -51,7 +51,6 @@ func (m *Module) CreateUser(ctx context.Context, tx *db.Queries, email string, p
 	return userId, nil
 }
 
-// WARN: Use ONLY before update
 func (m *Module) ValidateSession(ctx context.Context, tx *db.Queries, refreshToken string) (uuid.UUID, error) {
 	hash := sha256.Sum256([]byte(refreshToken))
 	session, err := tx.GetRefreshSessionForUpdate(ctx, hash[:])

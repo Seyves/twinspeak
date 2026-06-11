@@ -5,7 +5,7 @@ tmp_dir = "tmp"
 [build]
   args_bin = ["-c", "./config.yaml"]
   bin = "./tmp/main"
-  cmd = "go build -o ./tmp/main ./main.go"
+  cmd = "go build -o ./tmp/main ./cmd/twinspeek/main.go"
   delay = 1000
   exclude_dir = ["assets", "tmp", "vendor", "testdata"]
   exclude_extension = ["so", "o", "a", "dll", "dylib", "exe", "exe~"]

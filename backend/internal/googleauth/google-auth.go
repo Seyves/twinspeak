@@ -29,6 +29,9 @@ type Module struct {
 }
 
 var ErrGoogleAccountNotFound = errors.New("google account not found")
+var ErrGoogleInvalidState = errors.New("google invalid state")
+var ErrGoogleCannotExchange = errors.New("google cannot exchange")
+var ErrGoogleInvalidIdToken = errors.New("google invalid id token")
 
 func (m *Module) Redirect() (url string, state string, err error) {
 	state, err = generateState()
@@ -61,21 +64,21 @@ func (m *Module) CreateUser(ctx context.Context, tx *db.Queries, userInfo *oauth
 
 func (m *Module) Callback(ctx context.Context, code string, sessionState string, state string) (*oauth2api.Userinfo, error) {
 	if sessionState != state {
-		return nil, fmt.Errorf("missmatch state value")
+		return nil, ErrGoogleInvalidState
 	}
 	token, err := m.config.Exchange(context.Background(), code)
 	if err != nil {
-		return nil, fmt.Errorf("cannot exchange code: %w", err)
+		return nil, fmt.Errorf("%w: %w", ErrGoogleCannotExchange, err)
 	}
 
 	idToken, ok := token.Extra("id_token").(string)
 	if !ok {
-		return nil, errors.New("id token is not a string")
+		return nil, ErrGoogleInvalidIdToken
 	}
 
 	_, err = idtoken.Validate(ctx, idToken, m.config.ClientID)
 	if err != nil {
-		return nil, fmt.Errorf("invalid id token: %w", err)
+		return nil, fmt.Errorf("%w: %w", ErrGoogleInvalidIdToken, err)
 	}
 
 	client := m.config.Client(context.Background(), token)

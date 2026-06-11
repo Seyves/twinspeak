@@ -168,7 +168,7 @@ where
     user_id = $1 and 
     remaining_amount > 0 and
     (expires_at = null or expires_at > $2)
-order by expires_at asc nulls last
+order by expires_at asc nulls last, type asc, id asc
 limit 1 for update
 `
 
@@ -256,6 +256,51 @@ func (q *Queries) GetRefreshSessionForUpdate(ctx context.Context, tokenHash []by
 	return i, err
 }
 
+const getSpeeches = `-- name: GetSpeeches :many
+select id, user_id, in_lang, out_lang, transcription, translation, chat_side, started_at, ended_at from (
+    select id, user_id, in_lang, out_lang, transcription, translation, chat_side, started_at, ended_at from speeches 
+    where user_id = $1 
+    order by started_at desc 
+    limit $2
+) as s
+order by s.started_at asc
+`
+
+type GetSpeechesParams struct {
+	UserID uuid.UUID
+	Limit  int32
+}
+
+func (q *Queries) GetSpeeches(ctx context.Context, arg GetSpeechesParams) ([]Speech, error) {
+	rows, err := q.db.Query(ctx, getSpeeches, arg.UserID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Speech
+	for rows.Next() {
+		var i Speech
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.InLang,
+			&i.OutLang,
+			&i.Transcription,
+			&i.Translation,
+			&i.ChatSide,
+			&i.StartedAt,
+			&i.EndedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUser = `-- name: GetUser :one
 select id, email, password_hash, email_verified, profile_picture, google_sub, created_at from users where email = $1
 `
@@ -290,6 +335,66 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.ProfilePicture,
 		&i.GoogleSub,
 		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getUserCreditGrants = `-- name: GetUserCreditGrants :many
+select id, user_id, amount, remaining_amount, type, expires_at, created_at from credit_grants
+where
+    user_id = $1 and
+    (expires_at is null or expires_at > $2)
+order by type asc, expires_at asc nulls last, id asc
+`
+
+type GetUserCreditGrantsParams struct {
+	UserID    uuid.UUID
+	ExpiresAt *time.Time
+}
+
+func (q *Queries) GetUserCreditGrants(ctx context.Context, arg GetUserCreditGrantsParams) ([]CreditGrant, error) {
+	rows, err := q.db.Query(ctx, getUserCreditGrants, arg.UserID, arg.ExpiresAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CreditGrant
+	for rows.Next() {
+		var i CreditGrant
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Amount,
+			&i.RemainingAmount,
+			&i.Type,
+			&i.ExpiresAt,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getUserPrefs = `-- name: GetUserPrefs :one
+select id, user_id, chat_message_size, theme, in_lang, out_lang, updated_at from preferences where user_id = $1
+`
+
+func (q *Queries) GetUserPrefs(ctx context.Context, userID uuid.UUID) (Preference, error) {
+	row := q.db.QueryRow(ctx, getUserPrefs, userID)
+	var i Preference
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.ChatMessageSize,
+		&i.Theme,
+		&i.InLang,
+		&i.OutLang,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -354,18 +459,21 @@ func (q *Queries) InsertHttpRequest(ctx context.Context, arg InsertHttpRequestPa
 
 const insertSpeech = `-- name: InsertSpeech :exec
 insert into speeches (
-    user_id, in_lang, out_lang, started_at, ended_at
+    user_id, in_lang, out_lang, transcription, translation, chat_side, started_at, ended_at
 ) values (
-    $1, $2, $3, $4, $5
+    $1, $2, $3, $4, $5, $6, $7, $8
 )
 `
 
 type InsertSpeechParams struct {
-	UserID    uuid.UUID
-	InLang    string
-	OutLang   string
-	StartedAt time.Time
-	EndedAt   time.Time
+	UserID        uuid.UUID
+	InLang        string
+	OutLang       string
+	Transcription string
+	Translation   string
+	ChatSide      ChatSide
+	StartedAt     time.Time
+	EndedAt       time.Time
 }
 
 func (q *Queries) InsertSpeech(ctx context.Context, arg InsertSpeechParams) error {
@@ -373,9 +481,21 @@ func (q *Queries) InsertSpeech(ctx context.Context, arg InsertSpeechParams) erro
 		arg.UserID,
 		arg.InLang,
 		arg.OutLang,
+		arg.Transcription,
+		arg.Translation,
+		arg.ChatSide,
 		arg.StartedAt,
 		arg.EndedAt,
 	)
+	return err
+}
+
+const insertUserPrefs = `-- name: InsertUserPrefs :exec
+insert into preferences(user_id) values ($1)
+`
+
+func (q *Queries) InsertUserPrefs(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, insertUserPrefs, userID)
 	return err
 }
 
@@ -389,7 +509,7 @@ func (q *Queries) RevokeRefreshSession(ctx context.Context, tokenHash []byte) er
 }
 
 const updateGrant = `-- name: UpdateGrant :exec
-update credit_grants 
+update credit_grants
 set remaining_amount = $2
 where id = $1
 `
@@ -417,5 +537,35 @@ type UpdateSubscriptionParams struct {
 
 func (q *Queries) UpdateSubscription(ctx context.Context, arg UpdateSubscriptionParams) error {
 	_, err := q.db.Exec(ctx, updateSubscription, arg.UserID, arg.NextMonthlyGrantAt)
+	return err
+}
+
+const updateUserPrefs = `-- name: UpdateUserPrefs :exec
+update preferences
+set 
+    chat_message_size = $2,
+    theme = $3,
+    in_lang = $4,
+    out_lang = $5,
+    updated_at = now()
+where user_id = $1
+`
+
+type UpdateUserPrefsParams struct {
+	UserID          uuid.UUID
+	ChatMessageSize Size
+	Theme           Theme
+	InLang          string
+	OutLang         string
+}
+
+func (q *Queries) UpdateUserPrefs(ctx context.Context, arg UpdateUserPrefsParams) error {
+	_, err := q.db.Exec(ctx, updateUserPrefs,
+		arg.UserID,
+		arg.ChatMessageSize,
+		arg.Theme,
+		arg.InLang,
+		arg.OutLang,
+	)
 	return err
 }

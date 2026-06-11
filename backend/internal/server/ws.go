@@ -10,6 +10,7 @@ import (
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/google/uuid"
 	"github.com/twinspeak/backend/internal/billing"
+	"github.com/twinspeak/backend/internal/db"
 	"github.com/twinspeak/backend/internal/speechpipeline"
 	"golang.org/x/sync/errgroup"
 )
@@ -22,16 +23,43 @@ var expectedWSClosures = []int{
 }
 
 func (r *RestApi) startSession(c *websocket.Conn) {
+	defer c.Close()
 	ctx := context.Background()
 
-	userId := c.Locals("userId").(uuid.UUID)
-	inLang := c.Query("inLang")
-	outLang := c.Query("outLang")
-	start := time.Now()
+	var (
+		userId        = c.Locals("userId").(uuid.UUID)
+		inLang        = c.Query("inLang")
+		outLang       = c.Query("outLang")
+		chatSideRaw   = c.Query("chatSide")
+		start         = time.Now()
+		transcription = ""
+		translation   = ""
+	)
+
+	if inLang == "" {
+		evt := speechpipeline.NewSpeechEvent(speechpipeline.ErrorEvt, "query param 'inLang' not specified")
+		c.WriteJSON(evt)
+		return
+	}
+	if outLang == "" {
+		evt := speechpipeline.NewSpeechEvent(speechpipeline.ErrorEvt, "query param 'outLang' not specified")
+		c.WriteJSON(evt)
+		return
+	}
+	if chatSideRaw == "" {
+		evt := speechpipeline.NewSpeechEvent(speechpipeline.ErrorEvt, "query param 'chatSide' not specified")
+		c.WriteJSON(evt)
+		return
+	} else if chatSideRaw != string(db.ChatSideBottom) && chatSideRaw != string(db.ChatSideTop) {
+		evt := speechpipeline.NewSpeechEvent(speechpipeline.ErrorEvt, "query param 'chatSide' is invalid; available values: 'bottom', 'top'")
+		c.WriteJSON(evt)
+		return
+	}
+
+	chatSide := db.ChatSide(chatSideRaw)
 
 	err := r.users.StartSpeech(ctx, start, userId)
 	if err != nil {
-		defer c.Close()
 		var evt speechpipeline.Event
 		if errors.Is(err, billing.ErrInsufficientCredits) {
 			evt = speechpipeline.NewSpeechEvent(speechpipeline.ErrorEvt, err.Error())
@@ -39,15 +67,22 @@ func (r *RestApi) startSession(c *websocket.Conn) {
 			log.Errorf("Error starting speech: %s", err.Error())
 			evt = speechpipeline.NewSpeechEvent(speechpipeline.ErrorEvt, internalServerError)
 		}
-		if err = c.WriteJSON(evt); err != nil {
-			log.Errorf("Error writing message to app: %s", err.Error())
-		}
+		c.WriteJSON(evt)
 		return
 	}
 
 	defer func() {
 		now := time.Now()
-		err := r.users.EndSpeech(context.Background(), now, userId, inLang, outLang, start, now)
+		err := r.users.EndSpeech(context.Background(), now, db.InsertSpeechParams{
+			UserID:        userId,
+			InLang:        inLang,
+			OutLang:       outLang,
+			Transcription: transcription,
+			Translation:   translation,
+			ChatSide:      chatSide,
+			StartedAt:     start,
+			EndedAt:       now,
+		})
 		if err != nil {
 			log.Errorf("Error ending speech: %s", err.Error())
 		}
@@ -90,6 +125,14 @@ func (r *RestApi) startSession(c *websocket.Conn) {
 	eg.Go(func() error {
 		defer c.Close()
 		for evt := range out {
+			switch evt.Type {
+			case speechpipeline.LiveTranscriptEvt,
+				speechpipeline.FinalTranscriptEvt:
+				transcription = evt.Payload.(string)
+			case speechpipeline.LiveTranslateEvt,
+				speechpipeline.FinalTranslateEvt:
+				translation = evt.Payload.(string)
+			}
 			err := c.WriteJSON(evt)
 			if err != nil {
 				return fmt.Errorf("cannot write message to app: %w", err)

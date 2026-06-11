@@ -19,6 +19,22 @@ returning id;
 -- name: FindAccountFromGoogle :one
 select id from users where google_sub = $1;
 
+-- name: InsertUserPrefs :exec
+insert into preferences(user_id) values ($1);
+
+-- name: GetUserPrefs :one
+select * from preferences where user_id = $1;
+
+-- name: UpdateUserPrefs :exec
+update preferences
+set 
+    chat_message_size = $2,
+    theme = $3,
+    in_lang = $4,
+    out_lang = $5,
+    updated_at = now()
+where user_id = $1;
+
 -- name: CreateSubscription :one
 insert into subscriptions (user_id, next_monthly_grant_at) values ($1, $2)
 returning id;
@@ -61,20 +77,18 @@ where
     user_id = $1 and 
     remaining_amount > 0 and
     (expires_at = null or expires_at > $2)
-order by expires_at asc nulls last
+order by expires_at asc nulls last, type asc, id asc
 limit 1 for update;
 
--- name: FindCreditGrantForSpend :one
-select * from credit_grants 
-where 
-    user_id = $1 and 
-    remaining_amount > 0 and
-    (expires_at = null or expires_at > $2)
-order by expires_at asc nulls last
-limit 1 for update;
+-- name: GetUserCreditGrants :many
+select id, user_id, amount, remaining_amount, type, expires_at, created_at from credit_grants
+where
+    user_id = $1 and
+    (expires_at is null or expires_at > $2)
+order by type asc, expires_at asc nulls last, id asc;
 
 -- name: UpdateGrant :exec
-update credit_grants 
+update credit_grants
 set remaining_amount = $2
 where id = $1;
 
@@ -115,7 +129,16 @@ on http_requests(response_code);
 
 -- name: InsertSpeech :exec
 insert into speeches (
-    user_id, in_lang, out_lang, started_at, ended_at
+    user_id, in_lang, out_lang, transcription, translation, chat_side, started_at, ended_at
 ) values (
-    $1, $2, $3, $4, $5
+    $1, $2, $3, $4, $5, $6, $7, $8
 );
+
+-- name: GetSpeeches :many
+select * from (
+    select * from speeches 
+    where user_id = $1 
+    order by started_at desc 
+    limit $2
+) as s
+order by s.started_at asc;

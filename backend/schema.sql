@@ -11,6 +11,19 @@ create table users (
 create unique index idx_users_google_sub on users(google_sub);
 create unique index idx_users_email on users(email);
 
+-- Table for storing user's preferences and messages
+create type size as enum('sm', 'md', 'lg');
+create type theme as enum('system', 'light', 'dark');
+create table preferences (
+    id uuid primary key default uuidv7(),
+    user_id uuid not null references users(id) on delete cascade,
+    chat_message_size size not null default 'md',
+    theme theme not null default 'system',
+    in_lang text not null default 'en' check (length(in_lang) > 1),
+    out_lang text not null default 'fr' check (length(in_lang) > 1),
+    updated_at timestamptz(3)
+);
+
 -- Table for managing user sessions via refresh tokens
 create table refresh_sessions (
     id uuid primary key default uuidv7(),
@@ -37,7 +50,7 @@ create table credit_grants (
     id uuid primary key default uuidv7(),
     user_id uuid not null references users(id) on delete cascade,
     amount integer not null constraint amount_positive check (amount >= 0),
-    remaining_amount integer not null constraint remaining_amount_positive check (remaining_amount >= 0),
+remaining_amount integer not null constraint remaining_amount_positive check (remaining_amount >= 0),
     type credit_grant_type not null,
     expires_at timestamptz(3),
     created_at timestamptz(3) not null default now()
@@ -55,11 +68,15 @@ create table credit_expenses (
 );
 create index idx_credit_expenses_grant_id on credit_expenses(grant_id);
 
+create type chat_side as enum('bottom', 'top');
 create table speeches (
     id uuid primary key default uuidv7(),
     user_id uuid not null references users(id) on delete cascade,
     in_lang text not null,
     out_lang text not null,
+    transcription text not null,
+    translation text not null,
+    chat_side chat_side not null,
     started_at timestamptz(3) not null,
     ended_at timestamptz(3) not null
 );

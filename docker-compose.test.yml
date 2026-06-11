@@ -8,7 +8,7 @@ services:
     environment:
       POSTGRES_PASSWORD: postgres
       POSTGRES_USER: postgres
-      POSTGRES_DB: twinspeek
+      POSTGRES_DB: twinspeak
     ports:
       - "5432:5432"
     networks:
@@ -17,7 +17,7 @@ services:
       - postgresdata:/var/lib/postgresql
       - ./backend/schema.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d twinspeek"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d twinspeak"]
       interval: 2s
       timeout: 5s
       retries: 10
@@ -28,7 +28,7 @@ services:
       dockerfile: Dockerfile
     container_name: twinspeak-test-backend
     environment:
-      - DB_URL=postgres://postgres:postgres@db:5432/twinspeek
+      - DB_URL=postgres://postgres:postgres@db:5432/twinspeak
     volumes:
       - ./backend:/app
       - /app/tmp

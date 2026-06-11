@@ -2,10 +2,12 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
+	"github.com/twinspeak/backend/internal/googleauth"
 )
 
 const sessionStateCookie = "session_state"
@@ -39,7 +41,12 @@ func (r *RestApi) googleCallback(c *fiber.Ctx) error {
 	// ip, _ := netip.ParseAddr(c.IP())
 
 	accessToken, refreshToken, err := r.users.GoogleCallback(c.Context(), time.Now(), req.Code, sessionState, req.State)
-	if err != nil {
+	if errors.Is(err, googleauth.ErrGoogleInvalidState) ||
+		errors.Is(err, googleauth.ErrGoogleCannotExchange) ||
+		errors.Is(err, googleauth.ErrGoogleInvalidIdToken) {
+		log.Errorf("Error while processing redirect: %s", err.Error())
+		return fiber.NewError(fiber.StatusUnauthorized, "invalid or expired creds")
+	} else if err != nil {
 		log.Errorf("Error while processing redirect: %s", err.Error())
 		return fiber.NewError(fiber.StatusInternalServerError, internalServerError)
 	}

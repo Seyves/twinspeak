@@ -139,8 +139,8 @@ func (m *Module) BuyTopup(
 	userId uuid.UUID,
 	now time.Time,
 	amount int32,
-	expiresAt time.Time,
 ) error {
+	expiresAt := now.AddDate(0, 1, 0)
 	err := tx.CreateCreditGrant(ctx, db.CreateCreditGrantParams{
 		UserID:          userId,
 		Amount:          amount,

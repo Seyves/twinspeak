@@ -66,13 +66,13 @@ services:
     ports:
       - "4321:4321"
     volumes:
-      - ./frontend:/app
+      - ./frontend-tan:/app
       - /app/node_modules
     networks:
       - twinspeak
     depends_on:
       - backend
-    command: sh -c "corepack enable && corepack prepare pnpm@latest --activate && pnpm install && pnpm dev --host"
+    command: sh -c "corepack enable && corepack prepare pnpm@10.28.0 --activate && pnpm install && pnpm dev --host"
 
   db:
     image: postgres:18
@@ -82,7 +82,7 @@ services:
     environment:
       POSTGRES_PASSWORD: postgres
       POSTGRES_USER: postgres
-      POSTGRES_DB: twinspeek
+      POSTGRES_DB: twinspeak
     ports:
       - "5432:5432"
     networks:

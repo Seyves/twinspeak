@@ -13,6 +13,48 @@ import (
 	"github.com/google/uuid"
 )
 
+type ChatSide string
+
+const (
+	ChatSideBottom ChatSide = "bottom"
+	ChatSideTop    ChatSide = "top"
+)
+
+func (e *ChatSide) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ChatSide(s)
+	case string:
+		*e = ChatSide(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ChatSide: %T", src)
+	}
+	return nil
+}
+
+type NullChatSide struct {
+	ChatSide ChatSide
+	Valid    bool // Valid is true if ChatSide is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullChatSide) Scan(value interface{}) error {
+	if value == nil {
+		ns.ChatSide, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ChatSide.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullChatSide) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ChatSide), nil
+}
+
 type CreditGrantType string
 
 const (
@@ -55,6 +97,92 @@ func (ns NullCreditGrantType) Value() (driver.Value, error) {
 	return string(ns.CreditGrantType), nil
 }
 
+type Size string
+
+const (
+	SizeSm Size = "sm"
+	SizeMd Size = "md"
+	SizeLg Size = "lg"
+)
+
+func (e *Size) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = Size(s)
+	case string:
+		*e = Size(s)
+	default:
+		return fmt.Errorf("unsupported scan type for Size: %T", src)
+	}
+	return nil
+}
+
+type NullSize struct {
+	Size  Size
+	Valid bool // Valid is true if Size is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullSize) Scan(value interface{}) error {
+	if value == nil {
+		ns.Size, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.Size.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullSize) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.Size), nil
+}
+
+type Theme string
+
+const (
+	ThemeSystem Theme = "system"
+	ThemeLight  Theme = "light"
+	ThemeDark   Theme = "dark"
+)
+
+func (e *Theme) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = Theme(s)
+	case string:
+		*e = Theme(s)
+	default:
+		return fmt.Errorf("unsupported scan type for Theme: %T", src)
+	}
+	return nil
+}
+
+type NullTheme struct {
+	Theme Theme
+	Valid bool // Valid is true if Theme is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullTheme) Scan(value interface{}) error {
+	if value == nil {
+		ns.Theme, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.Theme.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullTheme) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.Theme), nil
+}
+
 type CreditExpense struct {
 	ID        uuid.UUID
 	UserID    uuid.UUID
@@ -93,6 +221,16 @@ type HttpRequest struct {
 	CreatedAt            *time.Time
 }
 
+type Preference struct {
+	ID              uuid.UUID
+	UserID          uuid.UUID
+	ChatMessageSize Size
+	Theme           Theme
+	InLang          string
+	OutLang         string
+	UpdatedAt       *time.Time
+}
+
 type RefreshSession struct {
 	ID        uuid.UUID
 	UserID    uuid.UUID
@@ -105,12 +243,15 @@ type RefreshSession struct {
 }
 
 type Speech struct {
-	ID        uuid.UUID
-	UserID    uuid.UUID
-	InLang    string
-	OutLang   string
-	StartedAt time.Time
-	EndedAt   time.Time
+	ID            uuid.UUID
+	UserID        uuid.UUID
+	InLang        string
+	OutLang       string
+	Transcription string
+	Translation   string
+	ChatSide      ChatSide
+	StartedAt     time.Time
+	EndedAt       time.Time
 }
 
 type Subscription struct {

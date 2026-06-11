@@ -115,13 +115,13 @@ func (r *RestApi) refresh(c *fiber.Ctx) error {
 }
 
 func (r *RestApi) getWSTiket(c *fiber.Ctx) error {
-	type response struct {
-		Ticket string `json:"ticket"`
-	}
 	userId := c.Locals("userId").(uuid.UUID)
 	ticket, err := r.users.GetWSTicket(c.Context(), time.Now(), userId)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, internalServerError)
+	}
+	type response struct {
+		Ticket string `json:"ticket"`
 	}
 	return c.JSON(response{
 		Ticket: ticket.Value,
