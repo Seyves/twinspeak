@@ -29,7 +29,6 @@ function TextGenerateEffect({
 
     const wordsArray = React.useMemo(() => words.split(' '), [words])
 
-    // сколько слов уже было отрендерено ранее
     const prevLengthRef = React.useRef(0)
 
     React.useEffect(() => {
@@ -38,13 +37,11 @@ function TextGenerateEffect({
         const prevLength = prevLengthRef.current
         const newWordsCount = wordsArray.length - prevLength
 
-        // если новых слов нет — ничего не делаем
         if (newWordsCount <= 0) {
             prevLengthRef.current = wordsArray.length
             return
         }
 
-        // берём только новые элементы
         const spans = scope.current.querySelectorAll('span')
         const newSpans = Array.from(spans).slice(prevLength)
 

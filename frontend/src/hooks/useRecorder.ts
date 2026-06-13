@@ -82,7 +82,6 @@ export function useRecorder({
 
             const ws = await startSession(inLang, outLang, recordingSide)
             ws.binaryType = 'arraybuffer'
-            wsRef.current = ws
 
             ws.onopen = async () => {
                 console.log('WebSocket connected')
@@ -171,7 +170,7 @@ export function useRecorder({
 
                 // Send binary PCM data to WebSocket
                 try {
-                    wsRef.current.send(pcmBuffer)
+                    ws.send(pcmBuffer)
                 } catch (err) {
                     console.error('Error sending audio to WebSocket:', err)
                 }

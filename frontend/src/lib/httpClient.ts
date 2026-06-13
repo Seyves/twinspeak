@@ -18,7 +18,7 @@ async function refreshTokenOnce() {
 
 // Create ky instance with hooks for automatic token handling
 export const httpClient = ky.create({
-    prefix: `https://${BACKEND_HOST}`,
+    prefix: `${BACKEND_HOST}`,
     hooks: {
         afterResponse: [
             async ({ request, options, response }) => {

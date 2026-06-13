@@ -66,7 +66,7 @@ services:
     ports:
       - "4321:4321"
     volumes:
-      - ./frontend-tan:/app
+      - ./frontend:/app
       - /app/node_modules
     networks:
       - twinspeak

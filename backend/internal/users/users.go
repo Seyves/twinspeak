@@ -148,6 +148,11 @@ func (s *Service) GoogleCallback(ctx context.Context, now time.Time, code string
 			return nil, nil, fmt.Errorf("cannot create user: %w", err)
 		}
 
+		err = s.preferences.CreatePreferences(ctx, qtx, userId)
+		if err != nil {
+			return nil, nil, fmt.Errorf("cannot create user preferences: %w", err)
+		}
+
 		err = s.billing.StartSubscription(ctx, qtx, userId, now)
 		if err != nil {
 			return nil, nil, fmt.Errorf("cannot start subscription: %w", err)

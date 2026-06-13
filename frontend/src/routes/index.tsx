@@ -142,6 +142,7 @@ function Index() {
                         return <ErrorPage key="error" onRetry={refetch} />
                     }
 
+                    console.log(msgs.data[msgs.data.length-1])
                     return (
                         <div
                             key="page"

@@ -25,10 +25,10 @@ const config = defineConfig({
             },
             routeRules: {
                 '/api/v1/**': {
-                    proxy: 'http://backend:8080/api/v1/**',
-                },
-                '/api/v1/auth/google/sign-in': {
-                    // exclude from proxying
+                    proxy: {
+                        to: 'http://backend:8080/api/v1/**',
+                        fetchOptions: { redirect: 'manual' },
+                    },
                 },
             },
         }),
@@ -37,9 +37,16 @@ const config = defineConfig({
         viteReact(),
     ],
     server: {
-        https: httpsConfig,
+        // https: httpsConfig,
         host: '0.0.0.0',
         port: 4321,
+        proxy: {
+            '/api/v1/ws': {
+                target: 'ws://backend:8080',
+                ws: true,
+                changeOrigin: true,
+            },
+        },
     },
 })
 

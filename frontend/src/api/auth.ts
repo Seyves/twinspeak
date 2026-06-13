@@ -5,7 +5,7 @@ const BACKEND_HOST = import.meta.env.VITE_HTTP_BACKEND_HOST
 const restrictedClient = ky.create({ prefix: BACKEND_HOST })
 
 export function redirectToGoogleAuth() {
-    return window.location.replace(`${BACKEND_HOST}/google-sign-in`)
+    return window.location.replace(`${BACKEND_HOST}/auth/google/sign-in`)
 }
 
 export type GoogleCallbackParams = {
