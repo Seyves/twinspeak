@@ -142,3 +142,21 @@ select * from (
     limit $2
 ) as s
 order by s.started_at asc;
+
+-- name: CreateVerificationToken :one
+insert into email_verification_tokens (user_id, token_hash, expires_at)
+values ($1, $2, $3)
+returning id;
+
+-- name: GetVerificationToken :one
+select * from email_verification_tokens 
+where token_hash = $1 and expires_at > now();
+
+-- name: VerifyUserEmail :exec
+update users set email_verified = true where id = $1;
+
+-- name: DeleteVerificationToken :exec
+delete from email_verification_tokens where token_hash = $1;
+
+-- name: DeleteExpiredVerificationTokens :exec
+delete from email_verification_tokens where expires_at <= now();

@@ -9,7 +9,6 @@
   - Config: `backend/config.yaml` (gitignored, see `config-example.yaml`)
   - DB: schema in `schema.sql`, queries in `query.sql`
   - Hot reload: Air (`.air.toml`)
-  
 - **Frontend**: TanStack Start, React 19, Tailwind CSS v4, Vite
   - Entry: `frontend/src/router.tsx`
   - Routes: file-based in `frontend/src/routes/`
@@ -30,6 +29,7 @@ docker compose up
 ```
 
 **Testing backend**:
+
 ```bash
 ./test.sh
 # Resets DB volume, runs `go test ./...` in docker-compose.test.yml
@@ -69,6 +69,7 @@ Frontend has Vitest configured (`pnpm test`) but no tests exist yet.
 ## API Integration
 
 Frontend assumes backend is at `backend:8080` in Docker network. Proxied through:
+
 - Nitro route rules for REST (vite.config.ts:26-33)
 - Vite dev server proxy for WebSocket (vite.config.ts:43-49)
 
@@ -78,6 +79,39 @@ Frontend assumes backend is at `backend:8080` in Docker network. Proxied through
 - `backend/cmd/`: twinspeek (main server), cli
 - `frontend/src/`: api, assets, atoms, components, definitions, hooks, lib, routes
 
+## Backend Code Style
+
+**Error Handling:**
+
+- Use named error variables for specific cases: `ErrInvalidCredentials`, `ErrMaliciousSuspicion`
+- Every error should be wrapped in the simular manner: `log.Errorf("Error during operation: %s", err.Error())`
+- Return fiber errors with status codes in trasport layer: `fiber.NewError(fiber.StatusBadRequest, "user message")`
+
+**Transactions:**
+
+- Always use `defer tx.Rollback(ctx)` after `Begin`
+- Create transaction-scoped queries: `qtx := queries.WithTx(tx)`
+- Commit explicitly at the end: `tx.Commit(ctx)`
+
+**Module Pattern:**
+
+- Each feature gets its own package under `internal/`
+- Modules have a struct with dependencies and a `New()` constructor
+- Modules should have as little dependencies as possible.
+- Modules should be testable by themselves
+
+**Constants:**
+
+- Define at package level or const block
+- Use descriptive names: `accessTokenLifetime`, `emailUnverifiedCookie`
+
+**Cookies:**
+
+- Use secure cookies: `HTTPOnly=true`, `Secure=true`, `SameSite=Strict`
+- Exception: `email_unverified` cookie needs `HTTPOnly=false` for frontend access
+- Helper pattern: `getSecureCookie()`, `getEmailUnverifiedCookie()`
+- Use negative flags for transient state (e.g., `email_unverified=true` for new users, removed after verification)
+
 ## Common Gotchas
 
 - **DB name inconsistency**: schema uses `twinspeak`, config.yaml references `twinspeek` (note spelling)
@@ -86,3 +120,6 @@ Frontend assumes backend is at `backend:8080` in Docker network. Proxied through
 - **Go version**: uses Go 1.25 (go.mod:3, Dockerfile)
 - **Frontend port**: always 4321 (package.json:9,12; vite.config.ts:42)
 - **Backend port**: always 8080 (config.yaml:1; docker-compose.yml:52)
+- **Backend doesn't know frontend routes**: Never return redirects to frontend paths, return errors instead
+- **SSR limitations**: Avoid heavy data fetching in SSR server functions, use them only for lightweight checks (cookies, etc.)
+- **Cookie-based state**: Prefer cookie checks over DB queries for performance (with DB fallback for security)

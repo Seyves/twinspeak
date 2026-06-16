@@ -11,6 +11,7 @@ import (
 	"github.com/twinspeak/backend/internal/auth"
 	"github.com/twinspeak/backend/internal/billing"
 	"github.com/twinspeak/backend/internal/db"
+	"github.com/twinspeak/backend/internal/email"
 	"github.com/twinspeak/backend/internal/googleauth"
 	"github.com/twinspeak/backend/internal/metrics"
 	"github.com/twinspeak/backend/internal/preferences"
@@ -24,40 +25,41 @@ type Service struct {
 	preferences *preferences.Module
 	billing     *billing.Module
 	metrics     *metrics.Module
+	email       *email.Module
 }
 
 func (s *Service) RotateSession(ctx context.Context, now time.Time, refreshToken string) (
-	accessToken *auth.Token, newRefreshToken *auth.Token, err error,
+	accessToken *auth.Token, newRefreshToken *auth.Token, userId uuid.UUID, err error,
 ) {
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
-		return nil, nil, fmt.Errorf("cannot start db transaction: %w", err)
+		return nil, nil, uuid.Nil, fmt.Errorf("cannot start db transaction: %w", err)
 	}
 	defer tx.Rollback(ctx)
 
 	qtx := s.queries.WithTx(tx)
 
-	userId, err := s.auth.ValidateSession(ctx, qtx, refreshToken)
+	userId, err = s.auth.ValidateSession(ctx, qtx, refreshToken)
 	if err != nil {
-		return nil, nil, fmt.Errorf("during checking session: %w", err)
+		return nil, nil, uuid.Nil, fmt.Errorf("during checking session: %w", err)
 	}
 
 	err = s.auth.RevokeSession(ctx, qtx, refreshToken)
 	if err != nil {
-		return nil, nil, fmt.Errorf("cannot revoke session: %w", err)
+		return nil, nil, uuid.Nil, fmt.Errorf("cannot revoke session: %w", err)
 	}
 
 	accessToken, newRefreshToken, err = s.auth.StartSession(ctx, qtx, userId, now)
 	if err != nil {
-		return nil, nil, fmt.Errorf("cannot start session: %w", err)
+		return nil, nil, uuid.Nil, fmt.Errorf("cannot start session: %w", err)
 	}
 
 	err = tx.Commit(ctx)
 	if err != nil {
-		return nil, nil, fmt.Errorf("cannot commit db transaction: %w", err)
+		return nil, nil, uuid.Nil, fmt.Errorf("cannot commit db transaction: %w", err)
 	}
 
-	return accessToken, newRefreshToken, nil
+	return accessToken, newRefreshToken, userId, nil
 }
 
 func (s *Service) GetWSTicket(ctx context.Context, now time.Time, userId uuid.UUID) (wsToken *auth.Token, err error) {
@@ -65,19 +67,19 @@ func (s *Service) GetWSTicket(ctx context.Context, now time.Time, userId uuid.UU
 }
 
 func (s *Service) SignIn(ctx context.Context, now time.Time, email string, password string) (
-	accessToken *auth.Token, refreshToken *auth.Token, err error,
+	accessToken *auth.Token, refreshToken *auth.Token, userId uuid.UUID, err error,
 ) {
-	userId, err := s.auth.ValidatePassword(ctx, s.queries, email, password)
+	userId, err = s.auth.ValidatePassword(ctx, s.queries, email, password)
 	if err != nil {
-		return nil, nil, fmt.Errorf("validating credentials: %w", err)
+		return nil, nil, uuid.Nil, fmt.Errorf("validating credentials: %w", err)
 	}
 
 	accessToken, refreshToken, err = s.auth.StartSession(ctx, s.queries, userId, now)
 	if err != nil {
-		return nil, nil, fmt.Errorf("cannot start session: %w", err)
+		return nil, nil, uuid.Nil, fmt.Errorf("cannot start session: %w", err)
 	}
 
-	return accessToken, refreshToken, nil
+	return accessToken, refreshToken, userId, nil
 }
 
 func (s *Service) SignUp(ctx context.Context, now time.Time, email string, password string) (
@@ -103,6 +105,12 @@ func (s *Service) SignUp(ctx context.Context, now time.Time, email string, passw
 	err = s.billing.StartSubscription(ctx, qtx, userId, now)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot start subscription: %w", err)
+	}
+
+	// Send verification email
+	err = s.email.SendVerificationEmail(ctx, qtx, userId, email)
+	if err != nil {
+		return nil, nil, fmt.Errorf("cannot send verification email: %w", err)
 	}
 
 	accessToken, refreshToken, err = s.auth.StartSession(ctx, qtx, userId, now)
@@ -281,12 +289,17 @@ func (s *Service) Logout(ctx context.Context, refreshToken string) error {
 	return s.auth.RevokeSession(ctx, s.queries, refreshToken)
 }
 
+func (s *Service) GetQueries() *db.Queries {
+	return s.queries
+}
+
 func New(
 	db *pgxpool.Pool,
 	queries *db.Queries,
 	auth *auth.Module,
 	googleauth *googleauth.Module,
 	billing *billing.Module,
+	emailModule *email.Module,
 ) *Service {
 	return &Service{
 		db:         db,
@@ -294,5 +307,6 @@ func New(
 		auth:       auth,
 		googleAuth: googleauth,
 		billing:    billing,
+		email:      emailModule,
 	}
 }

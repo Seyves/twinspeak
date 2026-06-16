@@ -10,6 +10,7 @@ import (
 	"github.com/twinspeak/backend/internal/billing"
 	"github.com/twinspeak/backend/internal/config"
 	"github.com/twinspeak/backend/internal/db"
+	"github.com/twinspeak/backend/internal/email"
 	"github.com/twinspeak/backend/internal/googleauth"
 	"github.com/twinspeak/backend/internal/metrics"
 	"github.com/twinspeak/backend/internal/server"
@@ -40,8 +41,14 @@ func main() {
 	googleauthm := googleauth.New(cfg.Google)
 	billing := billing.New()
 
+	emailm, err := email.New(cfg.Resend.ApiKey, cfg.Resend.FromEmail, cfg.PublicUrl)
+	if err != nil {
+		log.Errorf("Creating email module: %s", err.Error())
+		return
+	}
+
 	metricss := metrics.New(pool, queries)
-	userss := users.New(pool, queries, authm, googleauthm, billing)
+	userss := users.New(pool, queries, authm, googleauthm, billing, emailm)
 
 	var p speechpipeline.Pipeline
 	switch cfg.Pipeline {
@@ -59,7 +66,7 @@ func main() {
 		}
 	}
 
-	api := server.NewRestApi(cfg.Host, p, metricss, userss)
+	api := server.NewRestApi(cfg.Host, p, metricss, userss, emailm, pool, queries)
 	err = api.Start()
 	if err != nil {
 		log.Errorf("Starting server: %s", err.Error())

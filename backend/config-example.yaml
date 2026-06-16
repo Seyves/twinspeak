@@ -1,13 +1,15 @@
 host: 0.0.0.0:8080
-db-url: string
-hmac-secret: string
-google-oauth:
-  client-id: string
-  client-secret: string
-  redirect-url: string
-transcription: 
-  provider: faster_whisper
-  url: http://whisper:9000
-translation: 
-  provider: libretranslate
-  url: http://libretranslate:5000
+public-url: http://www.twinspeak.site
+db-url: postgresql://postgres:postgres@db:5432/twinspeek
+hmac-secret: some_key
+pipeline: gladia
+gladia-key: some_key
+faster-whisper-url: http://whisper:9000
+libretranslate-url: http://libretranslate:5000
+google:
+  client-id: client_id
+  client-secret: client_secret
+  redirect-url: https://redirect_url
+resend:
+  api-key: some_key
+  from-email: noreply@contact.twinspeak.site

@@ -45,8 +45,19 @@ export const Route = createRootRouteWithContext()({
         if (location.pathname.startsWith('/auth')) {
             return
         }
+
         const auth = await checkAuthServerFn()
-        if (!auth.session) throw Route.redirect({ to: '/auth' })
+        if (!auth.session) {
+            throw Route.redirect({ to: '/auth' })
+        }
+
+        if (location.pathname.startsWith('/verify-email')) {
+            return
+        }
+
+        if (!auth.emailVerified) {
+            throw Route.redirect({ to: '/verify-email' })
+        }
     },
 })
 

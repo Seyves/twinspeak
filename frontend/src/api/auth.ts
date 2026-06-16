@@ -40,3 +40,13 @@ export async function refreshToken() {
 export async function signOut() {
     await restrictedClient.post('auth/logout')
 }
+
+export async function resendVerificationEmail(): Promise<void> {
+    await restrictedClient.post('resend-verification')
+}
+
+export async function verifyEmail(token: string): Promise<void> {
+    await restrictedClient.get('verify-email', {
+        searchParams: { token },
+    })
+}

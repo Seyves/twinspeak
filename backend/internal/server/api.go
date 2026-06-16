@@ -10,7 +10,9 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/twinspeak/backend/internal/db"
+	"github.com/twinspeak/backend/internal/email"
 	"github.com/twinspeak/backend/internal/metrics"
 	"github.com/twinspeak/backend/internal/speechpipeline"
 	"github.com/twinspeak/backend/internal/users"
@@ -26,6 +28,9 @@ type RestApi struct {
 	fiber    *fiber.App
 	pipeline speechpipeline.Pipeline
 	users    *users.Service
+	email    *email.Module
+	db       *pgxpool.Pool
+	queries  *db.Queries
 }
 
 func (r *RestApi) Start() error {
@@ -40,6 +45,7 @@ func (r *RestApi) Start() error {
 	api.Use(r.requestIdMiddleware)
 	api.Use(r.metricsMiddleware)
 
+	// Public auth routes
 	api.Post("/auth/sign-in", r.signIn)
 	api.Post("/auth/sign-up", r.signUp)
 	api.Get("/auth/google/sign-in", r.googleSignIn)
@@ -47,16 +53,21 @@ func (r *RestApi) Start() error {
 	api.Post("/auth/refresh", r.refresh)
 	api.Post("/auth/logout", r.logout)
 
-	api.Get("/supported-languages", r.authMiddleware, r.supportedLanguages)
-	api.Get("/ws-ticket", r.authMiddleware, r.getWSTiket)
-	api.Get("/ping", r.authMiddleware, r.ping)
-	api.Get("/preferences", r.authMiddleware, r.getPreferences)
-	api.Put("/preferences", r.authMiddleware, r.updatePreferences)
-	api.Get("/messages", r.authMiddleware, r.getMessages)
-	api.Get("/me", r.authMiddleware, r.me)
-	api.Get("/me/credits", r.authMiddleware, r.getCredits)
+	// Verification routes (require auth but NOT email verification)
+	api.Get("/verify-email", r.verifyEmail)
+	api.Post("/resend-verification", r.authMiddleware, r.resendVerification)
 
-	api.Get("/ws/session", r.wsAuthMiddleware, websocket.New(r.startSession))
+	// Protected routes (require BOTH auth AND email verification)
+	api.Get("/supported-languages", r.authMiddleware, r.emailVerifiedMiddleware, r.supportedLanguages)
+	api.Get("/ws-ticket", r.authMiddleware, r.emailVerifiedMiddleware, r.getWSTiket)
+	api.Get("/ping", r.authMiddleware, r.emailVerifiedMiddleware, r.ping)
+	api.Get("/preferences", r.authMiddleware, r.emailVerifiedMiddleware, r.getPreferences)
+	api.Put("/preferences", r.authMiddleware, r.emailVerifiedMiddleware, r.updatePreferences)
+	api.Get("/messages", r.authMiddleware, r.emailVerifiedMiddleware, r.getMessages)
+	api.Get("/me", r.authMiddleware, r.me) // Don't require email verification for /me
+	api.Get("/me/credits", r.authMiddleware, r.emailVerifiedMiddleware, r.getCredits)
+
+	api.Get("/ws/session", r.wsAuthMiddleware, r.emailVerifiedMiddleware, websocket.New(r.startSession))
 
 	return r.fiber.Listen(r.host)
 }
@@ -218,6 +229,9 @@ func NewRestApi(
 	pipeline speechpipeline.Pipeline,
 	metrics *metrics.Module,
 	users *users.Service,
+	emailModule *email.Module,
+	dbPool *pgxpool.Pool,
+	queries *db.Queries,
 ) *RestApi {
 	server := fiber.New(fiber.Config{
 		AppName: "TwinspeakBackend",
@@ -228,5 +242,8 @@ func NewRestApi(
 		fiber:    server,
 		users:    users,
 		pipeline: pipeline,
+		email:    emailModule,
+		db:       dbPool,
+		queries:  queries,
 	}
 }

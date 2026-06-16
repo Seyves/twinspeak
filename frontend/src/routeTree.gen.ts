@@ -9,14 +9,22 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VerifyEmailRouteRouteImport } from './routes/verify-email/route'
 import { Route as SettingsRouteRouteImport } from './routes/settings/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as VerifyEmailIndexRouteImport } from './routes/verify-email/index'
 import { Route as SettingsIndexRouteImport } from './routes/settings/index'
 import { Route as AuthIndexRouteImport } from './routes/auth/index'
+import { Route as VerifyEmailCallbackRouteImport } from './routes/verify-email/callback'
 import { Route as SettingsPreferencesRouteImport } from './routes/settings/preferences'
 import { Route as SettingsAccountRouteImport } from './routes/settings/account'
 import { Route as AuthGoogleCallbackRouteImport } from './routes/auth/google-callback'
 
+const VerifyEmailRouteRoute = VerifyEmailRouteRouteImport.update({
+  id: '/verify-email',
+  path: '/verify-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRouteRoute = SettingsRouteRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -27,6 +35,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VerifyEmailIndexRoute = VerifyEmailIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => VerifyEmailRouteRoute,
+} as any)
 const SettingsIndexRoute = SettingsIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -36,6 +49,11 @@ const AuthIndexRoute = AuthIndexRouteImport.update({
   id: '/auth/',
   path: '/auth/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const VerifyEmailCallbackRoute = VerifyEmailCallbackRouteImport.update({
+  id: '/callback',
+  path: '/callback',
+  getParentRoute: () => VerifyEmailRouteRoute,
 } as any)
 const SettingsPreferencesRoute = SettingsPreferencesRouteImport.update({
   id: '/preferences',
@@ -56,68 +74,92 @@ const AuthGoogleCallbackRoute = AuthGoogleCallbackRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/settings': typeof SettingsRouteRouteWithChildren
+  '/verify-email': typeof VerifyEmailRouteRouteWithChildren
   '/auth/google-callback': typeof AuthGoogleCallbackRoute
   '/settings/account': typeof SettingsAccountRoute
   '/settings/preferences': typeof SettingsPreferencesRoute
+  '/verify-email/callback': typeof VerifyEmailCallbackRoute
   '/auth/': typeof AuthIndexRoute
   '/settings/': typeof SettingsIndexRoute
+  '/verify-email/': typeof VerifyEmailIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth/google-callback': typeof AuthGoogleCallbackRoute
   '/settings/account': typeof SettingsAccountRoute
   '/settings/preferences': typeof SettingsPreferencesRoute
+  '/verify-email/callback': typeof VerifyEmailCallbackRoute
   '/auth': typeof AuthIndexRoute
   '/settings': typeof SettingsIndexRoute
+  '/verify-email': typeof VerifyEmailIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/settings': typeof SettingsRouteRouteWithChildren
+  '/verify-email': typeof VerifyEmailRouteRouteWithChildren
   '/auth/google-callback': typeof AuthGoogleCallbackRoute
   '/settings/account': typeof SettingsAccountRoute
   '/settings/preferences': typeof SettingsPreferencesRoute
+  '/verify-email/callback': typeof VerifyEmailCallbackRoute
   '/auth/': typeof AuthIndexRoute
   '/settings/': typeof SettingsIndexRoute
+  '/verify-email/': typeof VerifyEmailIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/settings'
+    | '/verify-email'
     | '/auth/google-callback'
     | '/settings/account'
     | '/settings/preferences'
+    | '/verify-email/callback'
     | '/auth/'
     | '/settings/'
+    | '/verify-email/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth/google-callback'
     | '/settings/account'
     | '/settings/preferences'
+    | '/verify-email/callback'
     | '/auth'
     | '/settings'
+    | '/verify-email'
   id:
     | '__root__'
     | '/'
     | '/settings'
+    | '/verify-email'
     | '/auth/google-callback'
     | '/settings/account'
     | '/settings/preferences'
+    | '/verify-email/callback'
     | '/auth/'
     | '/settings/'
+    | '/verify-email/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SettingsRouteRoute: typeof SettingsRouteRouteWithChildren
+  VerifyEmailRouteRoute: typeof VerifyEmailRouteRouteWithChildren
   AuthGoogleCallbackRoute: typeof AuthGoogleCallbackRoute
   AuthIndexRoute: typeof AuthIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/verify-email': {
+      id: '/verify-email'
+      path: '/verify-email'
+      fullPath: '/verify-email'
+      preLoaderRoute: typeof VerifyEmailRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -132,6 +174,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/verify-email/': {
+      id: '/verify-email/'
+      path: '/'
+      fullPath: '/verify-email/'
+      preLoaderRoute: typeof VerifyEmailIndexRouteImport
+      parentRoute: typeof VerifyEmailRouteRoute
+    }
     '/settings/': {
       id: '/settings/'
       path: '/'
@@ -145,6 +194,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/auth/'
       preLoaderRoute: typeof AuthIndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/verify-email/callback': {
+      id: '/verify-email/callback'
+      path: '/callback'
+      fullPath: '/verify-email/callback'
+      preLoaderRoute: typeof VerifyEmailCallbackRouteImport
+      parentRoute: typeof VerifyEmailRouteRoute
     }
     '/settings/preferences': {
       id: '/settings/preferences'
@@ -186,9 +242,23 @@ const SettingsRouteRouteWithChildren = SettingsRouteRoute._addFileChildren(
   SettingsRouteRouteChildren,
 )
 
+interface VerifyEmailRouteRouteChildren {
+  VerifyEmailCallbackRoute: typeof VerifyEmailCallbackRoute
+  VerifyEmailIndexRoute: typeof VerifyEmailIndexRoute
+}
+
+const VerifyEmailRouteRouteChildren: VerifyEmailRouteRouteChildren = {
+  VerifyEmailCallbackRoute: VerifyEmailCallbackRoute,
+  VerifyEmailIndexRoute: VerifyEmailIndexRoute,
+}
+
+const VerifyEmailRouteRouteWithChildren =
+  VerifyEmailRouteRoute._addFileChildren(VerifyEmailRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SettingsRouteRoute: SettingsRouteRouteWithChildren,
+  VerifyEmailRouteRoute: VerifyEmailRouteRouteWithChildren,
   AuthGoogleCallbackRoute: AuthGoogleCallbackRoute,
   AuthIndexRoute: AuthIndexRoute,
 }

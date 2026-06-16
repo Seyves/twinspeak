@@ -43,6 +43,34 @@ func (r *RestApi) wsAuthMiddleware(c *fiber.Ctx) error {
 	return c.Next()
 }
 
+func (r *RestApi) emailVerifiedMiddleware(c *fiber.Ctx) error {
+	emailUnverifiedCookieValue := c.Cookies(emailUnverifiedCookie)
+
+	// If cookie says verified, trust it and continue
+	// In theory user can delete that cookie and navigate to / just fine
+	// But on the next token rotation user will get it again
+	if emailUnverifiedCookieValue != "true" {
+		return c.Next()
+	}
+
+	// If cookie says unverified, double-check with DB
+	// This handles: user verified in another tab, cookie manipulation
+	userId := c.Locals("userId").(uuid.UUID)
+	user, err := r.users.GetCurrentUser(c.Context(), userId)
+	if err != nil {
+		log.Errorf("Error getting user in email verification middleware: %s", err.Error())
+		return fiber.NewError(fiber.StatusInternalServerError, internalServerError)
+	}
+
+	if !user.EmailVerified {
+		return fiber.NewError(fiber.StatusForbidden, "email not verified")
+	}
+
+	c.Cookie(getEmailUnverifiedCookie(false, time.Now().Add(time.Minute*10)))
+
+	return c.Next()
+}
+
 func (r *RestApi) metricsMiddleware(c *fiber.Ctx) error {
 	var (
 		code     int

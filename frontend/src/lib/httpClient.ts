@@ -1,6 +1,6 @@
 import { getRouter } from '@/router'
 import { refreshToken } from '@/api/auth'
-import ky, { HTTPError } from 'ky'
+import ky from 'ky'
 
 const BACKEND_HOST = import.meta.env.VITE_HTTP_BACKEND_HOST
 
@@ -22,21 +22,39 @@ export const httpClient = ky.create({
     hooks: {
         afterResponse: [
             async ({ request, options, response }) => {
-                if (response.status !== 401) {
-                    return response
-                }
-
-                try {
-                    await refreshTokenOnce()
-
-                    return ky(request, options)
-                } catch (e) {
-                    if (e instanceof HTTPError && e.response.status === 401) {
+                switch (response.status) {
+                    case 401: {
                         const router = getRouter()
-                        router.navigate({ to: '/auth' })
-                        return
+                        // Check if this is already a retry to prevent infinite loops
+                        if (request.headers.get('X-Retry-After-Refresh')) {
+                            router.navigate({ to: '/auth' })
+                            return response
+                        }
+
+                        try {
+                            await refreshTokenOnce()
+                        } catch (e) {
+                            router.navigate({ to: '/auth' })
+                            return response
+                        }
+
+                        const retryRequest = new Request(request, {
+                            headers: {
+                                ...Object.fromEntries(request.headers.entries()),
+                                'X-Retry-After-Refresh': 'true',
+                            },
+                        })
+                        return httpClient(retryRequest, options)
                     }
-                    throw e
+                    case 403: {
+                        const clonedResp = response.clone()
+                        const body = await clonedResp.text()
+                        if (body === 'email not verified') {
+                            const router = getRouter()
+                            router.navigate({ to: '/verify-email' })
+                        }
+                        return response
+                    }
                 }
             },
         ],

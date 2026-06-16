@@ -10,8 +10,14 @@ import (
 
 const defaultPath = "/etc/twinspeak/config.yaml"
 
+type ResendConfig struct {
+	ApiKey    string `mapstructure:"api-key"`
+	FromEmail string `mapstructure:"from-email"`
+}
+
 type Config struct {
 	Host              string            `mapstructure:"host"`
+	PublicUrl         string            `mapstructure:"public-url"` // for link generation
 	HMACSecret        string            `mapstructure:"hmac-secret"`
 	DBUrl             string            `mapstructure:"db-url"`
 	Pipeline          string            `mapstructure:"pipeline"`
@@ -19,6 +25,7 @@ type Config struct {
 	FasterWhisperUrl  string            `mapstructure:"faster-whisper-url"`
 	LibretranslateUrl string            `mapstructure:"libretranslate-url"`
 	Google            googleauth.Config `mapstructure:"google"`
+	Resend            ResendConfig      `mapstructure:"resend"`
 }
 
 func Parse(path string, cfg any) error {

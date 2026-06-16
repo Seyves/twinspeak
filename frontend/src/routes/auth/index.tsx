@@ -4,7 +4,7 @@ import { redirectToGoogleAuth, signIn, signUp } from '@/api/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { Field, FieldError, FieldLabel } from '#/components/ui/field'
+import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { useForm } from '@tanstack/react-form'
 import { toast } from 'sonner'
 import { HTTPError } from 'ky'
@@ -13,7 +13,12 @@ import { getCookie } from '@tanstack/react-start/server'
 
 export const checkAuthServerFn = createServerFn().handler(async () => {
     const refreshToken = getCookie('refresh_token')
-    return { session: Boolean(refreshToken) }
+    const emailUnverified = getCookie('email_unverified')
+
+    return {
+        session: Boolean(refreshToken),
+        emailVerified: emailUnverified !== 'true',
+    }
 })
 
 export const Route = createFileRoute('/auth/')({

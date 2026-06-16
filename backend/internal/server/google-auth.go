@@ -53,6 +53,7 @@ func (r *RestApi) googleCallback(c *fiber.Ctx) error {
 
 	c.Cookie(getSecureCookie(refreshTokenCookie, refreshToken.Value, refreshToken.ExpiresAt))
 	c.Cookie(getSecureCookie(accessTokenCookie, accessToken.Value, accessToken.ExpiresAt))
+	c.Cookie(getEmailUnverifiedCookie(false, accessToken.ExpiresAt)) // Google users are auto-verified
 	// Killing session state cookie
 	c.Cookie(getSecureCookie(sessionStateCookie, "", time.Unix(0, 0)))
 

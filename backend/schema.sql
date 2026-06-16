@@ -37,6 +37,16 @@ create table refresh_sessions (
 );
 create unique index idx_refresh_token_hash on refresh_sessions(token_hash);
 
+-- Table for email verification tokens
+create table email_verification_tokens (
+    id uuid primary key default uuidv7(),
+    user_id uuid not null references users(id) on delete cascade,
+    token_hash bytea not null unique,
+    created_at timestamptz(3) not null default now(),
+    expires_at timestamptz(3) not null
+);
+create unique index idx_verification_token_hash on email_verification_tokens(token_hash);
+
 -- Table for managing user subscriptions
 create table subscriptions (
     id uuid primary key default uuidv7(),

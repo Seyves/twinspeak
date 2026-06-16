@@ -13,6 +13,7 @@ import (
 	"github.com/twinspeak/backend/internal/billing"
 	"github.com/twinspeak/backend/internal/config"
 	"github.com/twinspeak/backend/internal/db"
+	"github.com/twinspeak/backend/internal/email"
 	"github.com/twinspeak/backend/internal/googleauth"
 	"github.com/twinspeak/backend/internal/users"
 )
@@ -38,7 +39,11 @@ func initDeps(cfgPath string) (*deps, error) {
 	authm := auth.New(cfg.HMACSecret)
 	googleauthm := googleauth.New(cfg.Google)
 	billingm := billing.New()
-	userss := users.New(pool, queries, authm, googleauthm, billingm)
+	emailm, err := email.New(cfg.Resend.ApiKey, cfg.Resend.FromEmail, cfg.PublicUrl)
+	if err != nil {
+		return nil, fmt.Errorf("cannot create email module: %w", err)
+	}
+	userss := users.New(pool, queries, authm, googleauthm, billingm, emailm)
 
 	return &deps{
 		pool:  pool,
