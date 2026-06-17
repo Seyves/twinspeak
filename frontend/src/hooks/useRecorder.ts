@@ -2,8 +2,6 @@ import { chatSide, type ChatSide, type Message } from '@/definitions/chat'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { eventTypes, type SpeechEvent } from '@/definitions/events'
 import { startSession } from '@/api/speech'
-import { useAtom } from 'jotai'
-import { inputDeviceAtom } from '@/atoms/preferences'
 
 type UseGladiaRecorderOptions = {
     sampleRate?: number
@@ -15,8 +13,6 @@ export function useRecorder({
     sampleRate = 16000,
     numChannels = 1,
 }: UseGladiaRecorderOptions = {}) {
-    const [inputDevice] = useAtom(inputDeviceAtom)
-
     const [recordingSide, setRecordingSide] = useState<ChatSide | null>(null)
     const [recordingTime, setRecordingTime] = useState(0)
 
@@ -138,10 +134,6 @@ export function useRecorder({
                 echoCancellation: false,
                 noiseSuppression: false,
                 autoGainControl: false,
-            }
-
-            if (inputDevice !== 'default') {
-                constraints.deviceId = inputDevice
             }
 
             const stream = await navigator.mediaDevices.getUserMedia({

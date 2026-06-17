@@ -12,5 +12,9 @@ export const Route = createFileRoute('/verify-email')({
 })
 
 function VerifyEmailLayout() {
-    return <Outlet />
+    return (
+        <div className="h-full w-full bg-[#f1f2f7] dark:bg-[#060607]">
+            <Outlet />
+        </div>
+    )
 }

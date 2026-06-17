@@ -12,22 +12,35 @@ import ErrorState from '@/components/ui/error-state'
 import ErrorPage from '@/components/Error'
 import Ring from '@/components/ui/ring-spinner'
 import { useAtom } from 'jotai'
-import { preferencesAtom, updatePreferencesAtom } from '@/atoms/preferences'
 import Loader from '@/components/ui/loader'
 import { AnimatePresence } from 'motion/react'
-import { messagesAtom } from '@/atoms/messages'
-import { supportedLanguagesAtom } from '@/atoms/supported-languages'
-import { queryClientAtom } from 'jotai-tanstack-query'
+import { atomWithQuery, queryClientAtom } from 'jotai-tanstack-query'
+import { localThemeAtom } from '@/components/theme-provider'
+import { preferencesAtom, updatePreferencesAtom } from './settings/preferences'
+import { getMessages, getSupportedLanguages } from '@/api/common'
 
 export const Route = createFileRoute('/')({
     component: Index,
 })
 
-const maxMessages = 10
+export const messagesAtom = atomWithQuery(() => ({
+    queryKey: ['messages'],
+    queryFn: getMessages,
+    staleTime: Infinity,
+}))
+
+export const supportedLanguagesAtom = atomWithQuery(() => ({
+    queryKey: ['supported-languages'],
+    queryFn: getSupportedLanguages,
+    staleTime: Infinity,
+}))
+
+const maxMessages = 20
 
 function Index() {
     const [queryClient] = useAtom(queryClientAtom)
 
+    const [_, setLocalTheme] = useAtom(localThemeAtom)
     const [msgs] = useAtom(messagesAtom)
     const [prefs] = useAtom(preferencesAtom)
     const [supportedLangs] = useAtom(supportedLanguagesAtom)
@@ -42,6 +55,10 @@ function Index() {
     async function refetch() {
         await Promise.all([msgs.refetch(), prefs.refetch(), supportedLangs.refetch()])
     }
+
+    useEffect(() => {
+        if (prefs.isSuccess) setLocalTheme(prefs.data.theme)
+    }, [prefs.isSuccess])
 
     useEffect(() => {
         if (
@@ -159,10 +176,10 @@ function Index() {
                                 />
                             </div>
                             {/* Companion section */}
-                            <div className="flex flex-col border-b border-border/50 min-h-0">
+                            <div className="flex flex-col min-h-0">
                                 <Chat
                                     ref={companionChatRef}
-                                    className="rotate-180 bg-background/50 pb-30 h-full"
+                                    className="rotate-180 bg-background pb-30 h-full"
                                 >
                                     {[...msgs.data].reverse().map((msg) => (
                                         <ChatMessage
@@ -189,25 +206,13 @@ function Index() {
                             {/* Center control section */}
                             <Languages
                                 languages={supportedLangs.data}
-                                setOwnerLang={(lang) =>
-                                    setPrefs({
-                                        ...prefs.data,
-                                        inLang: lang,
-                                    })
-                                }
-                                ownerLang={prefs.data.inLang}
-                                setCompanionLang={(lang) =>
-                                    setPrefs({
-                                        ...prefs.data,
-                                        outLang: lang,
-                                    })
-                                }
-                                companionLang={prefs.data.outLang}
+                                prefs={prefs.data}
+                                setPrefs={setPrefs}
                             />
 
                             {/* Owner section */}
                             <div className="flex relative flex-col min-h-0">
-                                <Chat ref={ownChatRef} className="bg-background/50 pb-30 h-full">
+                                <Chat ref={ownChatRef} className="bg-background pb-30 h-full">
                                     {[...msgs.data].reverse().map((msg) => (
                                         <ChatMessage
                                             key={msg.id}

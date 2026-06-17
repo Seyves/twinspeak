@@ -2,27 +2,34 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeftRight, Settings } from 'lucide-react'
 import LangCombobox from './LangCombobox'
 import { Link } from '@tanstack/react-router'
+import type { Preferences } from '@/api/common'
+import type { MutateFunction } from 'jotai-tanstack-query'
 
 export default function Languages(props: {
     languages: Record<string, string>
-    setOwnerLang: (lang: string) => void
-    ownerLang: string
-    setCompanionLang: (lang: string) => void
-    companionLang: string
+    prefs: Preferences
+    setPrefs: MutateFunction<Preferences, unknown, Preferences, void>
 }) {
     function swagLanguages() {
-        const ownerLang = props.ownerLang
-        props.setOwnerLang(props.companionLang)
-        props.setCompanionLang(ownerLang)
+        props.setPrefs({
+            ...props.prefs,
+            inLang: props.prefs.outLang,
+            outLang: props.prefs.inLang
+        })
     }
 
     return (
-        <div className="relative border-y border-border/50 bg-linear-to-r from-card/30 via-card/20 to-card/30 px-6 py-5 flex justify-center items-center gap-4">
+        <div className="relative border-y border-border/50 bg-card px-6 py-5 flex justify-center items-center gap-4">
             <div className="flex-1 max-w-64">
                 <LangCombobox
                     languages={props.languages}
-                    setLang={props.setOwnerLang}
-                    lang={props.ownerLang}
+                    setLang={(newLang) => {
+                        props.setPrefs({
+                            ...props.prefs,
+                            inLang: newLang,
+                        })
+                    }}
+                    lang={props.prefs.inLang}
                 />
             </div>
             <Button
@@ -37,12 +44,17 @@ export default function Languages(props: {
             <div className="flex-1 max-w-64">
                 <LangCombobox
                     languages={props.languages}
-                    setLang={props.setCompanionLang}
-                    lang={props.companionLang}
+                    setLang={(newLang) => {
+                        props.setPrefs({
+                            ...props.prefs,
+                            outLang: newLang,
+                        })
+                    }}
+                    lang={props.prefs.outLang}
                 />
             </div>
             <div className="">
-                <Link to={"/settings"}>
+                <Link to={'/settings'}>
                     <Button
                         variant="ghost"
                         size="icon"

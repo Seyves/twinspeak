@@ -7,12 +7,18 @@ import ErrorPage from '@/components/Error'
 import { signOut as signOutReq } from '@/api/auth'
 import { Button } from '@/components/ui/button'
 import Loader from '@/components/ui/loader'
-import { accountAtom } from '@/atoms/account'
+import { getCreditGrants, getMe } from '@/api/user'
 import SectionCard from '@/components/SectionCard'
+import { atomWithQuery } from 'jotai-tanstack-query'
 
 export const Route = createFileRoute('/settings/account')({
     component: Account,
 })
+
+export const accountAtom = atomWithQuery(() => ({
+    queryKey: ['account'],
+    queryFn: async () => await Promise.all([getMe(), getCreditGrants()]),
+}))
 
 function CreditGrantCard({ grant }: { grant: CreditGrant }) {
     const pct = grant.amount > 0 ? (grant.remainingAmount / grant.amount) * 100 : 0

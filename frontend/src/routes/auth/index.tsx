@@ -10,6 +10,8 @@ import { toast } from 'sonner'
 import { HTTPError } from 'ky'
 import { createServerFn } from '@tanstack/react-start'
 import { getCookie } from '@tanstack/react-start/server'
+import { atomWithMutation } from 'jotai-tanstack-query'
+import { useAtom } from 'jotai'
 
 export const checkAuthServerFn = createServerFn().handler(async () => {
     const refreshToken = getCookie('refresh_token')
@@ -31,9 +33,20 @@ export const Route = createFileRoute('/auth/')({
 
 type AuthMode = 'signin' | 'signup'
 
+const authAtom = atomWithMutation(() => ({
+    mutationKey: ['auth'],
+    mutationFn: (params: { mode: AuthMode; email: string; password: string }) => {
+        if (params.mode === 'signin') {
+            return signIn(params.email, params.password)
+        }
+        return signUp(params.email, params.password)
+    },
+}))
+
 function Auth() {
     const navigate = useNavigate()
     const [mode, setMode] = useState<AuthMode>('signin')
+    const [{ mutateAsync, isPending }] = useAtom(authAtom)
 
     const form = useForm({
         defaultValues: {
@@ -42,8 +55,9 @@ function Auth() {
             confirmPassword: '',
         },
         onSubmit: async ({ value }) => {
-            if (mode === 'signin') {
-                toast.promise(() => signIn(value.email, value.password), {
+            toast.promise(
+                () => mutateAsync({ mode: mode, email: value.email, password: value.password }),
+                {
                     loading: 'Working on it...',
                     success: () => {
                         navigate({ to: '/' })
@@ -53,16 +67,13 @@ function Auth() {
                         if (e instanceof HTTPError && e.response.status === 401) {
                             return 'Email or password is wrong'
                         } else {
-                            return 'Something went wrong'
+                            return 'Something went wrong :('
                         }
                     },
                     position: 'top-right',
-                    richColors: true,
-                })
-            } else {
-                await signUp(value.email, value.password)
-                navigate({ to: '/' })
-            }
+                },
+            )
+            navigate({ to: '/' })
         },
     })
 
@@ -71,12 +82,12 @@ function Auth() {
     }
 
     return (
-        <div className="relative w-full h-screen flex flex-col items-center justify-center overflow-y-auto">
+        <div className="bg-[#f1f2f7] dark:bg-[#060607] relative w-full h-screen flex flex-col items-center justify-center overflow-y-auto">
             <AnimatedBackground />
 
             {/* Content - scrollable on small screens */}
             <div className="relative z-10 w-full max-w-md px-4 py-4 sm:py-8 my-auto">
-                <div className="backdrop-blur-xl bg-card/40 border border-border/50 rounded-2xl p-6 sm:p-8 shadow-2xl">
+                <div className="backdrop-blur-xl bg-card/80 dark:bg-card/40 border border-border shadow-2xl rounded-2xl p-6 sm:p-8">
                     {/* Header */}
                     <div className="mb-6 sm:mb-8 text-center">
                         <h1 className="text-2xl sm:text-3xl font-semibold bg-linear-to-r from-primary to-accent bg-clip-text text-transparent mb-1 sm:mb-2">
@@ -257,19 +268,24 @@ function Auth() {
                         {/* Submit Button */}
                         <Button
                             type="submit"
+                            disabled={isPending}
                             className="h-10 w-full mt-4 sm:mt-6 bg-linear-to-r from-primary to-accent hover:opacity-90 transform hover:scale-105 active:scale-95 shadow-lg"
                         >
-                            {mode === 'signin' ? 'Sign In' : 'Create Account'}
+                            {(function () {
+                                if (isPending) return 'Loading...'
+                                if (mode === 'signin') return 'Sign In'
+                                return 'Create Account'
+                            })()}
                         </Button>
                     </form>
 
                     {/* Divider */}
                     <div className="relative my-4 sm:my-6">
                         <div className="absolute inset-0 flex items-center">
-                            <div className="w-full border-t border-border/50"></div>
+                            <div className="w-full border-t border-border"></div>
                         </div>
                         <div className="relative flex justify-center text-xs sm:text-sm">
-                            <span className="px-2 bg-card/40 text-muted-foreground">
+                            <span className="px-2 bg-card text-muted-foreground">
                                 Or continue with
                             </span>
                         </div>

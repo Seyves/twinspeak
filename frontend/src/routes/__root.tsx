@@ -5,8 +5,9 @@ import { QueryClientAtomProvider } from 'jotai-tanstack-query/react'
 import appCss from '../styles.css?url'
 import { checkAuthServerFn } from './auth'
 import { QueryClient } from '@tanstack/query-core'
+import { ThemeProvider } from '@/components/theme-provider'
 
-const THEME_INIT_SCRIPT = `(function(){try{var stored=window.localStorage.getItem('theme');var mode=(stored==='light'||stored==='dark'||stored==='auto')?stored:'auto';var prefersDark=window.matchMedia('(prefers-color-scheme: dark)').matches;var resolved=mode==='auto'?(prefersDark?'dark':'light'):mode;var root=document.documentElement;root.classList.remove('light','dark');root.classList.add(resolved);if(mode==='auto'){root.removeAttribute('data-theme')}else{root.setAttribute('data-theme',mode)}root.style.colorScheme=resolved;}catch(e){}})();`
+const THEME_INIT_SCRIPT = `(function(){try{var stored=window.localStorage.getItem('theme');if(!stored)stored='"system"';var mode=JSON.parse(stored);if(mode!=='light'&&mode!=='dark'&&mode!=='system')mode='system';var prefersDark=window.matchMedia('(prefers-color-scheme: dark)').matches;var resolved=mode==='system'?(prefersDark?'dark':'light'):mode;var root=document.documentElement;root.classList.remove('light','dark');root.classList.add(resolved);if(mode==='system'){root.removeAttribute('data-theme')}else{root.setAttribute('data-theme',mode)}root.style.colorScheme=resolved;}catch(e){var root=document.documentElement;root.classList.add('light');root.style.colorScheme='light';}})();`
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -64,17 +65,19 @@ export const Route = createRootRouteWithContext()({
 function RootDocument({ children }: { children: React.ReactNode }) {
     return (
         <QueryClientAtomProvider client={queryClient}>
-            <html lang="en" suppressHydrationWarning>
-                <head>
-                    <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
-                    <HeadContent />
-                </head>
-                <body className="h-dvh">
-                    {children}
-                    <Toaster />
-                    <Scripts />
-                </body>
-            </html>
+            <ThemeProvider>
+                <html lang="en" suppressHydrationWarning>
+                    <head>
+                        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+                        <HeadContent />
+                    </head>
+                    <body className="h-dvh">
+                        {children}
+                        <Toaster />
+                        <Scripts />
+                    </body>
+                </html>
+            </ThemeProvider>
         </QueryClientAtomProvider>
     )
 }

@@ -38,10 +38,10 @@ export const chatMessageSize = {
 
 export type ChatMessageSize = (typeof chatMessageSize)[keyof typeof chatMessageSize]
 
-export const theme = {
+export const themes = {
     system: 'system',
     light: 'light',
     dark: 'dark',
 } as const
 
-export type Theme = (typeof theme)[keyof typeof theme]
+export type Theme = (typeof themes)[keyof typeof themes]

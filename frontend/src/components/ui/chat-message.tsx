@@ -27,8 +27,8 @@ export default function ChatMessage(props: {
                     sizeClass,
                     props.type === 'incoming'
                         ? 'border border-input text-foreground rounded-tl-sm'
-                        : 'bg-accent text-foreground rounded-tr-sm border-primary/20',
-                    props.className
+                        : 'bg-accent dark:text-foreground text-background rounded-tr-sm border-primary/20',
+                    props.className,
                 )}
             >
                 <motion.div

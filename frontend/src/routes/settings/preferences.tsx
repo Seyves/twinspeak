@@ -8,39 +8,60 @@ import {
 } from '@/components/ui/select'
 import { type Preferences } from '@/api/common'
 import { useAtom } from 'jotai'
-import { chatMessageSize, theme, type ChatMessageSize, type Theme } from '@/definitions/chat'
-import { Mic } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { chatMessageSize, themes, type ChatMessageSize, type Theme } from '@/definitions/chat'
+import { useEffect } from 'react'
 import Loader from '@/components/ui/loader'
 import ErrorPage from '@/components/Error'
 import { AnimatePresence, motion } from 'motion/react'
-import { inputDeviceAtom, preferencesAtom, updatePreferencesAtom } from '@/atoms/preferences'
 import SectionCard from '@/components/SectionCard'
+import { localThemeAtom } from '@/components/theme-provider'
+import { atomWithQuery, atomWithMutation, queryClientAtom } from 'jotai-tanstack-query'
+import { getPreferences, updatePreferences } from '@/api/common'
 
 export const Route = createFileRoute('/settings/preferences')({
     component: Preferences,
 })
 
+export const preferencesAtom = atomWithQuery(() => ({
+    queryKey: ['preferences'],
+    queryFn: getPreferences,
+}))
+
+export const updatePreferencesAtom = atomWithMutation((get) => ({
+    mutationKey: ['update-preferences'],
+    mutationFn: async (prefs: Preferences) => {
+        await updatePreferences(prefs)
+        return prefs
+    },
+    onMutate: (data) => {
+        const queryClient = get(queryClientAtom)
+        queryClient.setQueryData(['preferences'], data)
+    },
+}))
+
 function Preferences() {
-    const [inputDevice, setInputDevice] = useAtom(inputDeviceAtom)
-    const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([])
-    const [{ data: prefs, isPending, isError, refetch }] = useAtom(preferencesAtom)
+    const [_, setLocalTheme] = useAtom(localThemeAtom)
+    const [{ data: prefs, isSuccess, isPending, isError, refetch }] = useAtom(preferencesAtom)
     const [{ mutate: setPrefs }] = useAtom(updatePreferencesAtom)
 
     useEffect(() => {
+        if (isSuccess) setLocalTheme(prefs.theme)
+    }, [isSuccess])
+
+    useEffect(() => {
         try {
-            getMicDevices()
+            // getMicDevices()
         } catch (e) {
             console.error(e)
         }
     }, [])
 
-    async function getMicDevices() {
-        await navigator.mediaDevices.getUserMedia({ audio: true })
-        const devices = await navigator.mediaDevices.enumerateDevices()
-        const micDevices = devices.filter((d) => d.kind === 'audioinput')
-        setAudioDevices(micDevices)
-    }
+    // async function getMicDevices() {
+    //     await navigator.mediaDevices.getUserMedia({ audio: true })
+    //     const devices = await navigator.mediaDevices.enumerateDevices()
+    //     const micDevices = devices.filter((d) => d.kind === 'audioinput')
+    //     setAudioDevices(micDevices)
+    // }
 
     return (
         <div className="relative h-full">
@@ -95,12 +116,11 @@ function Preferences() {
                                         <label className="font-medium">Theme</label>
                                         <Select
                                             value={prefs.theme}
-                                            onValueChange={(v) =>
-                                                setPrefs({
-                                                    ...prefs,
-                                                    theme: v as Theme,
-                                                })
-                                            }
+                                            onValueChange={(v) => {
+                                                const theme = v as Theme
+                                                setLocalTheme(theme)
+                                                setPrefs({ ...prefs, theme })
+                                            }}
                                         >
                                             <SelectTrigger className="w-44 text-base">
                                                 <SelectValue />
@@ -108,52 +128,25 @@ function Preferences() {
                                             <SelectContent>
                                                 <SelectItem
                                                     className="text-base"
-                                                    value={theme.dark}
+                                                    value={themes.dark}
                                                 >
                                                     Dark
                                                 </SelectItem>
                                                 <SelectItem
                                                     className="text-base"
-                                                    value={theme.light}
+                                                    value={themes.light}
                                                 >
                                                     Light
                                                 </SelectItem>
                                                 <SelectItem
                                                     className="text-base"
-                                                    value={theme.system}
+                                                    value={themes.system}
                                                 >
                                                     System
                                                 </SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
-                                </div>
-                            </SectionCard>
-
-                            <SectionCard label="Audio">
-                                <div className="flex items-center justify-between gap-4">
-                                    <div className="flex items-center gap-2">
-                                        <Mic className="w-4 h-4 text-muted-foreground" />
-                                        <label className="text font-medium">Microphone</label>
-                                    </div>
-                                    <Select value={inputDevice} onValueChange={setInputDevice}>
-                                        <SelectTrigger className="w-44">
-                                            <SelectValue placeholder="Default" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="default">Default</SelectItem>
-                                            {audioDevices
-                                                .filter((d) => d.deviceId !== '')
-                                                .map((device, idx) => (
-                                                    <SelectItem
-                                                        key={device.deviceId}
-                                                        value={device.deviceId}
-                                                    >
-                                                        {device.label || `Microphone ${idx + 1}`}
-                                                    </SelectItem>
-                                                ))}
-                                        </SelectContent>
-                                    </Select>
                                 </div>
                             </SectionCard>
                         </motion.div>

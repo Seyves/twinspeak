@@ -1,11 +1,16 @@
 import Loader from '@/components/ui/loader'
-import { redirectToGoogleAuth, type GoogleCallbackParams } from '@/api/auth'
+import { googleProcessCallback, redirectToGoogleAuth, type GoogleCallbackParams } from '@/api/auth'
 import { createFileRoute, useNavigate, useSearch } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { useAtom } from 'jotai'
-import { googleCallbackAtom } from '@/atoms/auth'
 import ErrorPage from '@/components/Error'
 import { HTTPError } from 'ky'
+import { atomWithMutation } from 'jotai-tanstack-query'
+
+const googleCallbackAtom = atomWithMutation(() => ({
+    mutationKey: ['google-callback'],
+    mutationFn: googleProcessCallback,
+}))
 
 export const Route = createFileRoute('/auth/google-callback')({
     component: RouteComponent,
@@ -27,6 +32,7 @@ function RouteComponent() {
     }, [])
 
     useEffect(() => {
+        console.log(isSuccess)
         if (!isSuccess) return
         navigate({ to: '/' })
     }, [isSuccess])

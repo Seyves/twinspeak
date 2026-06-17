@@ -1,7 +1,11 @@
+import { themes } from '@/definitions/chat'
+import { useAtom } from 'jotai'
 import { useEffect, useRef } from 'react'
+import { localThemeAtom, resolveSystemTheme } from '@/components/theme-provider'
 
 export function AnimatedBackground() {
     const canvasRef = useRef<HTMLCanvasElement>(null)
+    const [theme] = useAtom(localThemeAtom)
 
     useEffect(() => {
         const canvas = canvasRef.current
@@ -9,6 +13,9 @@ export function AnimatedBackground() {
 
         const ctx = canvas.getContext('2d')
         if (!ctx) return
+
+        const resolvedTheme = theme === themes.system ? resolveSystemTheme() : theme
+        let isDark = resolvedTheme === themes.dark
 
         // Set canvas size
         const resizeCanvas = () => {
@@ -26,7 +33,7 @@ export function AnimatedBackground() {
             vy: number
             size: number
             opacity: number
-            color: string
+            colorIndex: number
         }
 
         const particles: Particle[] = []
@@ -41,18 +48,31 @@ export function AnimatedBackground() {
                 vy: (Math.random() - 0.5) * 1,
                 size: Math.random() * 2 + 1,
                 opacity: Math.random() * 0.5 + 0.2,
-                color: ['oklch(0.7247 0.1424 266.1732)', 'oklch(0.567 0.1282 279.41)'][
-                    Math.floor(Math.random() * 2)
-                ],
+                colorIndex: Math.floor(Math.random() * 2),
             })
         }
 
         let animationFrameId: number
         const animate = () => {
+            // Theme-aware colors
+            const colors = isDark
+                ? {
+                      gradientStart: 'oklch(0.1076 0.005 280)',
+                      gradientEnd: 'oklch(0.13 0.006 280)',
+                      particles: ['oklch(0.7247 0.1424 266.1732)', 'oklch(0.567 0.1282 279.41)'],
+                      lines: 'oklch(0.7247 0.1424 266.1732)',
+                  }
+                : {
+                      gradientStart: 'oklch(0.98 0.005 280)',
+                      gradientEnd: 'oklch(0.95 0.008 280)',
+                      particles: ['oklch(0.5247 0.1424 266.1732)', 'oklch(0.467 0.1282 279.41)'],
+                      lines: 'oklch(0.5247 0.1424 266.1732)',
+                  }
+
             // Clear with gradient background
             const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height)
-            gradient.addColorStop(0, 'oklch(0.1076 0.005 280)')
-            gradient.addColorStop(1, 'oklch(0.13 0.006 280)')
+            gradient.addColorStop(0, colors.gradientStart)
+            gradient.addColorStop(1, colors.gradientEnd)
             ctx.fillStyle = gradient
             ctx.fillRect(0, 0, canvas.width, canvas.height)
 
@@ -68,9 +88,10 @@ export function AnimatedBackground() {
                 if (particle.y > canvas.height) particle.y = 0
 
                 // Draw particle with glow
-                ctx.shadowColor = particle.color
+                const color = colors.particles[particle.colorIndex]
+                ctx.shadowColor = color
                 ctx.shadowBlur = 15
-                ctx.fillStyle = particle.color
+                ctx.fillStyle = color
                 ctx.globalAlpha = particle.opacity
                 ctx.beginPath()
                 ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2)
@@ -79,8 +100,8 @@ export function AnimatedBackground() {
             })
 
             // Draw connecting lines between nearby particles
-            ctx.strokeStyle = 'oklch(0.7247 0.1424 266.1732)'
-            ctx.globalAlpha = 0.1
+            ctx.strokeStyle = colors.lines
+            ctx.globalAlpha = isDark ? 0.1 : 0.15
             ctx.lineWidth = 1
 
             for (let i = 0; i < particles.length; i++) {
@@ -108,7 +129,7 @@ export function AnimatedBackground() {
             window.removeEventListener('resize', resizeCanvas)
             cancelAnimationFrame(animationFrameId)
         }
-    }, [])
+    }, [theme])
 
     return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none" />
 }

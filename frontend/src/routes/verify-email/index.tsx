@@ -1,34 +1,40 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
-import { useState } from 'react'
 import { toast } from 'sonner'
-import { resendVerificationEmail } from '@/api/auth'
+import { resendVerificationEmail, signOut } from '@/api/auth'
 import { AnimatedBackground } from '@/components/animated-background'
-import { MailWarning } from 'lucide-react'
+import { MailWarning, LogOut } from 'lucide-react'
+import { atomWithMutation } from 'jotai-tanstack-query'
+import { useAtom } from 'jotai'
 
 export const Route = createFileRoute('/verify-email/')({
     component: VerifyEmail,
 })
 
+const resendVerificationEmailAtom = atomWithMutation(() => ({
+    mutationKey: ['send-verification-email'],
+    mutationFn: resendVerificationEmail,
+}))
+
 function VerifyEmail() {
-    const [isResending, setIsResending] = useState(false)
+    const navigate = useNavigate()
+    const [{ mutateAsync, isPending }] = useAtom(resendVerificationEmailAtom)
 
     const handleResend = async () => {
-        setIsResending(true)
-        try {
-            await resendVerificationEmail()
-            toast.success('Verification email sent! Check your inbox.', {
-                position: 'top-right',
-                richColors: true,
-            })
-        } catch (error) {
-            toast.error('Failed to send email. Please try again.', {
-                position: 'top-right',
-                richColors: true,
-            })
-        } finally {
-            setIsResending(false)
-        }
+        toast.promise(mutateAsync, {
+            loading: 'Working on it...',
+            success: () => {
+                navigate({ to: '/' })
+                return 'Verification email sent! Check your inbox.'
+            },
+            error: 'Something went wrong :(',
+            position: 'top-right',
+        })
+    }
+
+    const handleSignOut = async () => {
+        await signOut()
+        navigate({ to: '/auth' })
     }
 
     return (
@@ -50,14 +56,22 @@ function VerifyEmail() {
                         </p>
                     </div>
 
-                    <div className="space-y-4">
+                    <div className="space-y-2">
                         <Button
                             onClick={handleResend}
-                            disabled={isResending}
+                            disabled={isPending}
                             variant="outline"
                             className="w-full"
                         >
-                            {isResending ? 'Sending...' : 'Resend verification email'}
+                            {isPending ? 'Sending...' : 'Resend verification email'}
+                        </Button>
+                        <Button
+                            variant="outline"
+                            onClick={handleSignOut}
+                            className="w-full text-destructive border-destructive/20 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/40"
+                        >
+                            <LogOut className="w-3.5 h-3.5" />
+                            Sign out
                         </Button>
                     </div>
                 </div>

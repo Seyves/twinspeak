@@ -1,32 +1,18 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { themes, type Theme } from '@/definitions/chat'
+import { useAtom } from 'jotai'
+import { atomWithStorage } from 'jotai/utils'
+import { createContext, useEffect } from 'react'
 
-type Theme = 'dark' | 'light' | 'system'
+export const localThemeAtom = atomWithStorage<Theme>('theme', themes.system)
 
 type ThemeProviderProps = {
     children: React.ReactNode
-    defaultTheme?: Theme
-    storageKey?: string
 }
 
-type ThemeProviderState = {
-    theme: Theme
-    setTheme: (theme: Theme) => void
-}
+const ThemeProviderContext = createContext(null)
 
-const initialState: ThemeProviderState = {
-    theme: 'system',
-    setTheme: () => null,
-}
-
-const ThemeProviderContext = createContext<ThemeProviderState>(initialState)
-
-export function ThemeProvider({
-    children,
-    defaultTheme = 'system',
-    storageKey = 'vite-ui-theme',
-    ...props
-}: ThemeProviderProps) {
-    const [theme, setTheme] = useState<Theme>(defaultTheme)
+export function ThemeProvider({ children }: ThemeProviderProps) {
+    const [theme] = useAtom(localThemeAtom)
 
     useEffect(() => {
         const root = window.document.documentElement
@@ -34,39 +20,16 @@ export function ThemeProvider({
         root.classList.remove('light', 'dark')
 
         if (theme === 'system') {
-            const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
-                ? 'dark'
-                : 'light'
-
-            root.classList.add(systemTheme)
+            root.classList.add(resolveSystemTheme())
             return
         }
-
-        const storaged = localStorage.getItem(storageKey) as Theme
-        if (storaged) setTheme(storaged)
 
         root.classList.add(theme)
     }, [theme])
 
-    const value = {
-        theme,
-        setTheme: (theme: Theme) => {
-            localStorage.setItem(storageKey, theme)
-            setTheme(theme)
-        },
-    }
-
-    return (
-        <ThemeProviderContext.Provider {...props} value={value}>
-            {children}
-        </ThemeProviderContext.Provider>
-    )
+    return <ThemeProviderContext.Provider value={null}>{children}</ThemeProviderContext.Provider>
 }
 
-export const useTheme = () => {
-    const context = useContext(ThemeProviderContext)
-
-    if (context === undefined) throw new Error('useTheme must be used within a ThemeProvider')
-
-    return context
+export function resolveSystemTheme() {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? themes.dark : themes.light
 }
