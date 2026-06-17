@@ -6,7 +6,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select'
-import { type Preferences } from '@/api/common'
+import * as AccountApi from '@/api/account'
 import { useAtom } from 'jotai'
 import { chatMessageSize, themes, type ChatMessageSize, type Theme } from '@/definitions/chat'
 import { useEffect } from 'react'
@@ -16,7 +16,6 @@ import { AnimatePresence, motion } from 'motion/react'
 import SectionCard from '@/components/SectionCard'
 import { localThemeAtom } from '@/components/theme-provider'
 import { atomWithQuery, atomWithMutation, queryClientAtom } from 'jotai-tanstack-query'
-import { getPreferences, updatePreferences } from '@/api/common'
 
 export const Route = createFileRoute('/settings/preferences')({
     component: Preferences,
@@ -24,13 +23,13 @@ export const Route = createFileRoute('/settings/preferences')({
 
 export const preferencesAtom = atomWithQuery(() => ({
     queryKey: ['preferences'],
-    queryFn: getPreferences,
+    queryFn: AccountApi.getPreferences,
 }))
 
 export const updatePreferencesAtom = atomWithMutation((get) => ({
     mutationKey: ['update-preferences'],
-    mutationFn: async (prefs: Preferences) => {
-        await updatePreferences(prefs)
+    mutationFn: async (prefs: AccountApi.Preferences) => {
+        await AccountApi.updatePreferences(prefs)
         return prefs
     },
     onMutate: (data) => {
@@ -47,21 +46,6 @@ function Preferences() {
     useEffect(() => {
         if (isSuccess) setLocalTheme(prefs.theme)
     }, [isSuccess])
-
-    useEffect(() => {
-        try {
-            // getMicDevices()
-        } catch (e) {
-            console.error(e)
-        }
-    }, [])
-
-    // async function getMicDevices() {
-    //     await navigator.mediaDevices.getUserMedia({ audio: true })
-    //     const devices = await navigator.mediaDevices.enumerateDevices()
-    //     const micDevices = devices.filter((d) => d.kind === 'audioinput')
-    //     setAudioDevices(micDevices)
-    // }
 
     return (
         <div className="relative h-full">

@@ -1,7 +1,7 @@
 import { chatSide, type ChatSide, type Message } from '@/definitions/chat'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { eventTypes, type SpeechEvent } from '@/definitions/events'
-import { startSession } from '@/api/speech'
+import * as SpeechApi from '@/api/ws'
 
 type UseGladiaRecorderOptions = {
     sampleRate?: number
@@ -76,7 +76,7 @@ export function useRecorder({
                     ? [ownerLang, companionLang]
                     : [companionLang, ownerLang]
 
-            const ws = await startSession(inLang, outLang, recordingSide)
+            const ws = await SpeechApi.startSession(inLang, outLang, recordingSide)
             ws.binaryType = 'arraybuffer'
 
             ws.onopen = async () => {

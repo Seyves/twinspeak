@@ -32,6 +32,7 @@ var ErrGoogleAccountNotFound = errors.New("google account not found")
 var ErrGoogleInvalidState = errors.New("google invalid state")
 var ErrGoogleCannotExchange = errors.New("google cannot exchange")
 var ErrGoogleInvalidIdToken = errors.New("google invalid id token")
+var ErrEmailAlreadyTaken = errors.New("email already taken")
 
 func (m *Module) Redirect() (url string, state string, err error) {
 	state, err = generateState()
@@ -51,6 +52,11 @@ func generateState() (string, error) {
 }
 
 func (m *Module) CreateUser(ctx context.Context, tx *db.Queries, userInfo *oauth2api.Userinfo) (uuid.UUID, error) {
+	if _, err := tx.GetUserByEmail(ctx, userInfo.Email); err == nil {
+		return uuid.Nil, ErrEmailAlreadyTaken
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return uuid.Nil, fmt.Errorf("cannot select user from db by email: %w", err)
+	}
 	userId, err := tx.CreateAccountFromGoogle(ctx, db.CreateAccountFromGoogleParams{
 		GoogleSub:      &userInfo.Id,
 		Email:          userInfo.Email,
@@ -58,6 +64,18 @@ func (m *Module) CreateUser(ctx context.Context, tx *db.Queries, userInfo *oauth
 	})
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("cannot insert user in db: %w", err)
+	}
+	return userId, nil
+}
+
+func (m *Module) LinkExistingUser(ctx context.Context, tx *db.Queries, userInfo *oauth2api.Userinfo) (uuid.UUID, error) {
+	userId, err := tx.LinkAccountToGoogle(ctx, db.LinkAccountToGoogleParams{
+		GoogleSub:      &userInfo.Id,
+		Email:          userInfo.Email,
+		ProfilePicture: &userInfo.Picture,
+	})
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("cannot update user in db: %w", err)
 	}
 	return userId, nil
 }

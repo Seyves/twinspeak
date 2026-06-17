@@ -4,6 +4,9 @@ select * from users where email = $1;
 -- name: GetUserByID :one
 select * from users where id = $1;
 
+-- name: GetUserByEmail :one
+select * from users where email = $1;
+
 -- name: CreateUser :one
 insert into users (email, password_hash) values ($1, $2)
 returning id;
@@ -18,6 +21,14 @@ returning id;
 
 -- name: FindAccountFromGoogle :one
 select id from users where google_sub = $1;
+
+-- name: LinkAccountToGoogle :one
+update users set 
+    profile_picture = $1, 
+    google_sub = $2,
+    email_verified = true
+where email = $3
+returning id;
 
 -- name: InsertUserPrefs :exec
 insert into preferences(user_id) values ($1);

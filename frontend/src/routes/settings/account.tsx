@@ -1,13 +1,12 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { type CreditGrant } from '@/api/user'
+import * as AccountApi from '@/api/account'
+import * as AuthApi from '@/api/auth'
 import { useAtom } from 'jotai'
 import { Calendar, LogOut, Zap } from 'lucide-react'
 import { AnimatePresence } from 'motion/react'
 import ErrorPage from '@/components/Error'
-import { signOut as signOutReq } from '@/api/auth'
 import { Button } from '@/components/ui/button'
 import Loader from '@/components/ui/loader'
-import { getCreditGrants, getMe } from '@/api/user'
 import SectionCard from '@/components/SectionCard'
 import { atomWithQuery } from 'jotai-tanstack-query'
 
@@ -17,10 +16,10 @@ export const Route = createFileRoute('/settings/account')({
 
 export const accountAtom = atomWithQuery(() => ({
     queryKey: ['account'],
-    queryFn: async () => await Promise.all([getMe(), getCreditGrants()]),
+    queryFn: async () => await Promise.all([AccountApi.getAccount(), AccountApi.getCredits()]),
 }))
 
-function CreditGrantCard({ grant }: { grant: CreditGrant }) {
+function CreditGrantCard({ grant }: { grant: AccountApi.CreditGrant }) {
     const pct = grant.amount > 0 ? (grant.remainingAmount / grant.amount) * 100 : 0
     const isMonthly = grant.type === 'monthly'
 
@@ -91,7 +90,7 @@ function Account() {
     const [{ data, isPending, isError, refetch }] = useAtom(accountAtom)
 
     async function signOut() {
-        await signOutReq()
+        await AuthApi.signOut()
         navigate({ to: '/auth' })
     }
 

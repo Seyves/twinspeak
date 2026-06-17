@@ -357,6 +357,25 @@ func (q *Queries) GetUser(ctx context.Context, email string) (User, error) {
 	return i, err
 }
 
+const getUserByEmail = `-- name: GetUserByEmail :one
+select id, email, password_hash, email_verified, profile_picture, google_sub, created_at from users where email = $1
+`
+
+func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByEmail, email)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.EmailVerified,
+		&i.ProfilePicture,
+		&i.GoogleSub,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getUserByID = `-- name: GetUserByID :one
 select id, email, password_hash, email_verified, profile_picture, google_sub, created_at from users where id = $1
 `
@@ -552,6 +571,28 @@ insert into preferences(user_id) values ($1)
 func (q *Queries) InsertUserPrefs(ctx context.Context, userID uuid.UUID) error {
 	_, err := q.db.Exec(ctx, insertUserPrefs, userID)
 	return err
+}
+
+const linkAccountToGoogle = `-- name: LinkAccountToGoogle :one
+update users set 
+    profile_picture = $1, 
+    google_sub = $2,
+    email_verified = true
+where email = $3
+returning id
+`
+
+type LinkAccountToGoogleParams struct {
+	ProfilePicture *string
+	GoogleSub      *string
+	Email          string
+}
+
+func (q *Queries) LinkAccountToGoogle(ctx context.Context, arg LinkAccountToGoogleParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, linkAccountToGoogle, arg.ProfilePicture, arg.GoogleSub, arg.Email)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const revokeRefreshSession = `-- name: RevokeRefreshSession :exec

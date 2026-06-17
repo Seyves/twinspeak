@@ -1,5 +1,5 @@
 import { getRouter } from '@/router'
-import { refreshToken } from '@/api/auth'
+import * as AuthApi from '@/api/auth'
 import ky from 'ky'
 
 const BACKEND_HOST = import.meta.env.VITE_HTTP_BACKEND_HOST
@@ -8,7 +8,7 @@ let refreshPromise: Promise<void> | null = null
 
 async function refreshTokenOnce() {
     if (!refreshPromise) {
-        refreshPromise = refreshToken().finally(() => {
+        refreshPromise = AuthApi.refreshToken().finally(() => {
             refreshPromise = null
         })
     }

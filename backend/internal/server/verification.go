@@ -8,6 +8,11 @@ import (
 	"github.com/google/uuid"
 )
 
+func (r *RestApi) MountVerifyRouter(router fiber.Router) {
+	router.Get("/verification/verify", r.verifyEmail)
+	router.Post("/verification/resend", r.resendVerification)
+}
+
 func (r *RestApi) verifyEmail(c *fiber.Ctx) error {
 	token := c.Query("token")
 	if token == "" {

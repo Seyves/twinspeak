@@ -25,6 +25,7 @@ const (
 
 var ErrInvalidCredentials = errors.New("invalid credentials")
 var ErrMaliciousSuspicion = errors.New("malicious suspicion")
+var ErrEmailAlreadyTaken = errors.New("email already taken")
 
 type Module struct {
 	hmacSecret string
@@ -36,11 +37,15 @@ type Token struct {
 }
 
 func (m *Module) CreateUser(ctx context.Context, tx *db.Queries, email string, password string) (uuid.UUID, error) {
+	if _, err := tx.GetUserByEmail(ctx, email); err == nil {
+		return uuid.Nil, ErrEmailAlreadyTaken
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return uuid.Nil, fmt.Errorf("cannot select user from db by email: %w", err)
+	}
 	salted, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("cannot hash the password: %w", err)
 	}
-
 	userId, err := tx.CreateUser(ctx, db.CreateUserParams{
 		Email:        email,
 		PasswordHash: salted,

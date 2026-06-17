@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"embed"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"html/template"
 	"time"
@@ -21,6 +22,8 @@ import (
 var templatesFS embed.FS
 
 const verificationTokenLifetime = time.Hour * 24
+
+var ErrInvalidEmail = errors.New("invalid email")
 
 type Module struct {
 	resendClient *resend.Client

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gofiber/contrib/websocket"
+	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/google/uuid"
 	"github.com/twinspeak/backend/internal/billing"
@@ -15,11 +16,30 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+func (r *RestApi) MountWsRoutes(router fiber.Router) {
+	router.Get("/ws/ticket", r.getWSTiket)
+	router.Get("/ws/session", websocket.New(r.startSession))
+}
+
 var expectedWSClosures = []int{
 	websocket.CloseNormalClosure,
 	websocket.CloseGoingAway,
 	websocket.CloseNoStatusReceived,
 	websocket.CloseAbnormalClosure,
+}
+
+func (r *RestApi) getWSTiket(c *fiber.Ctx) error {
+	userId := c.Locals("userId").(uuid.UUID)
+	ticket, err := r.users.GetWSTicket(c.Context(), time.Now(), userId)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, internalServerError)
+	}
+	type response struct {
+		Ticket string `json:"ticket"`
+	}
+	return c.JSON(response{
+		Ticket: ticket.Value,
+	})
 }
 
 func (r *RestApi) startSession(c *websocket.Conn) {

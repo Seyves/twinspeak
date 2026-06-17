@@ -1,10 +1,12 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
-import { verifyEmail } from '@/api/auth'
+import { createFileRoute } from '@tanstack/react-router'
+import { useEffect } from 'react'
+import * as VerificationApi from '@/api/verification'
 import { AnimatedBackground } from '@/components/animated-background'
 import Loader from '@/components/ui/loader'
 import { Button } from '@/components/ui/button'
 import { CircleX, MailCheck } from 'lucide-react'
+import { atomWithMutation } from 'jotai-tanstack-query'
+import { useAtom } from 'jotai'
 
 export const Route = createFileRoute('/verify-email/callback')({
     component: VerifyEmailCallback,
@@ -15,36 +17,28 @@ export const Route = createFileRoute('/verify-email/callback')({
     },
 })
 
-type VerificationState = 'verifying' | 'success' | 'error'
+const verifyEmailAtom = atomWithMutation(() => ({
+    mutationKey: ['verify-email'],
+    mutationFn: VerificationApi.verify,
+}))
 
 function VerifyEmailCallback() {
     const { token } = Route.useSearch()
-    const navigate = useNavigate()
-    const [state, setState] = useState<VerificationState>('verifying')
-    const [errorMessage, setErrorMessage] = useState<string>('')
+
+    const [{ mutate, isIdle, isPending, isError }] = useAtom(verifyEmailAtom)
 
     useEffect(() => {
-        if (!token) {
-            setState('error')
-            setErrorMessage('Invalid verification link')
-            return
-        }
-
-        verifyEmail(token)
-            .then(() => {
-                setState('success')
-            })
-            .catch((err) => {
-                setState('error')
-                setErrorMessage('Invalid or expired verification link')
-            })
+        if (!token) return
+        mutate(token)
     }, [token])
 
-    if (state === 'verifying') {
-        return <Loader />
-    }
+    useEffect(() => {
+        if (isError) setTimeout(navigate, 5000)
+    }, [isError])
 
-    if (state === 'error') {
+    if (isIdle || isPending) return <Loader />
+
+    if (!token || isError) {
         return (
             <div className="relative w-full h-screen flex flex-col items-center justify-center">
                 <AnimatedBackground />
@@ -55,10 +49,11 @@ function VerifyEmailCallback() {
                                 <CircleX className="size-12 sm:size-16 text-red-400" />
                             </div>
                             <h1 className="text-xl sm:text-2xl font-semibold text-foreground mb-2">
-                                {errorMessage}
+                                Invalid or expired verification link
                             </h1>
                             <p className="text-muted-foreground text-sm sm:text-base">
-                                Please request a new verification email.
+                                Please request a new verification email. You will be redirected in 5
+                                seconds...
                             </p>
                         </div>
                     </div>
@@ -81,13 +76,12 @@ function VerifyEmailCallback() {
                             Email verified!
                         </h1>
                         <p className="text-muted-foreground text-sm sm:text-base">
-                            Your email has been successfully verified. You can
-                            now use TwinSpeak!
+                            Your email has been successfully verified. You can now use TwinSpeak!
                         </p>
                     </div>
 
                     <Button
-                        onClick={() => navigate({ to: '/' })}
+                        onClick={navigate}
                         className="w-full bg-linear-to-r from-primary to-accent hover:opacity-90"
                     >
                         Continue to app
@@ -96,4 +90,9 @@ function VerifyEmailCallback() {
             </div>
         </div>
     )
+}
+
+// To reset Referrer header
+function navigate() {
+    window.location.href = '/'
 }

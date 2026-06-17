@@ -141,7 +141,7 @@ func TestBuyTopup(t *testing.T) {
 	err = billing.SpendCredits(t.Context(), qtx, userId, now, MaxCreditsPerSession)
 	require.Error(t, err)
 
-	err = billing.BuyTopup(t.Context(), qtx, userId, now, 20, now.AddDate(0, 1, 0))
+	err = billing.BuyTopup(t.Context(), qtx, userId, now, 20)
 	require.NoError(t, err)
 
 	err = billing.SpendCredits(t.Context(), qtx, userId, now, 20)

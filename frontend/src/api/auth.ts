@@ -4,20 +4,7 @@ const BACKEND_HOST = import.meta.env.VITE_HTTP_BACKEND_HOST
 
 const restrictedClient = ky.create({ prefix: BACKEND_HOST })
 
-export function redirectToGoogleAuth() {
-    return window.location.replace(`${BACKEND_HOST}/auth/google/sign-in`)
-}
-
-export type GoogleCallbackParams = {
-    code: string
-    state: string
-}
-
-export async function googleProcessCallback(params: GoogleCallbackParams) {
-    await restrictedClient.post('auth/google/callback', {
-        json: params,
-    })
-}
+export const emailAlreadyTaken = 'email already taken'
 
 export async function signIn(email: string, password: string) {
     await restrictedClient.post('auth/sign-in', {
@@ -41,12 +28,17 @@ export async function signOut() {
     await restrictedClient.post('auth/logout')
 }
 
-export async function resendVerificationEmail(): Promise<void> {
-    await restrictedClient.post('resend-verification')
+export type GoogleCallbackParams = {
+    code: string
+    state: string
 }
 
-export async function verifyEmail(token: string): Promise<void> {
-    await restrictedClient.get('verify-email', {
-        searchParams: { token },
+export function redirectToGoogleAuth() {
+    return window.location.replace(`${BACKEND_HOST}/auth/google/sign-in`)
+}
+
+export async function googleProcessCallback(params: GoogleCallbackParams) {
+    await restrictedClient.post('auth/google/callback', {
+        json: params,
     })
 }

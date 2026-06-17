@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { AnimatedBackground } from '@/components/animated-background'
-import { redirectToGoogleAuth, signIn, signUp } from '@/api/auth'
+import * as AuthApi from '@/api/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
@@ -13,6 +13,14 @@ import { getCookie } from '@tanstack/react-start/server'
 import { atomWithMutation } from 'jotai-tanstack-query'
 import { useAtom } from 'jotai'
 
+export const Route = createFileRoute('/auth/')({
+    component: Auth,
+    beforeLoad: async () => {
+        const auth = await checkAuthServerFn()
+        if (auth.session) throw Route.redirect({ to: '/' })
+    },
+})
+
 export const checkAuthServerFn = createServerFn().handler(async () => {
     const refreshToken = getCookie('refresh_token')
     const emailUnverified = getCookie('email_unverified')
@@ -23,25 +31,17 @@ export const checkAuthServerFn = createServerFn().handler(async () => {
     }
 })
 
-export const Route = createFileRoute('/auth/')({
-    component: Auth,
-    beforeLoad: async () => {
-        const auth = await checkAuthServerFn()
-        if (auth.session) throw Route.redirect({ to: '/' })
-    },
-})
-
-type AuthMode = 'signin' | 'signup'
-
 const authAtom = atomWithMutation(() => ({
     mutationKey: ['auth'],
     mutationFn: (params: { mode: AuthMode; email: string; password: string }) => {
         if (params.mode === 'signin') {
-            return signIn(params.email, params.password)
+            return AuthApi.signIn(params.email, params.password)
         }
-        return signUp(params.email, params.password)
+        return AuthApi.signUp(params.email, params.password)
     },
 }))
+
+type AuthMode = 'signin' | 'signup'
 
 function Auth() {
     const navigate = useNavigate()
@@ -63,11 +63,15 @@ function Auth() {
                         navigate({ to: '/' })
                         return 'You are successfully logged in!'
                     },
-                    error: (e) => {
-                        if (e instanceof HTTPError && e.response.status === 401) {
-                            return 'Email or password is wrong'
-                        } else {
-                            return 'Something went wrong :('
+                    error: async (e) => {
+                        if (!(e instanceof HTTPError)) return 'Something went wrong :('
+                        switch (e.response.status) {
+                            case 401:
+                                return 'Email or password is wrong'
+                            case 409:
+                                if (e.data === AuthApi.emailAlreadyTaken) {
+                                    return 'Email already taken'
+                                }
                         }
                     },
                     position: 'top-right',
@@ -78,7 +82,7 @@ function Auth() {
     })
 
     const handleGoogleAuth = () => {
-        redirectToGoogleAuth()
+        AuthApi.redirectToGoogleAuth()
     }
 
     return (
@@ -172,6 +176,13 @@ function Auth() {
 
                         <form.Field
                             name="password"
+                            validators={{
+                                onBlur: ({ value }) => {
+                                    return value.length < 6
+                                        ? 'Password must be at least 6 characters long'
+                                        : undefined
+                                },
+                            }}
                             children={(field) => {
                                 const isInvalid =
                                     field.state.meta.isTouched && !field.state.meta.isValid
@@ -212,8 +223,8 @@ function Auth() {
                             <form.Field
                                 name="confirmPassword"
                                 validators={{
-                                    onBlurListenTo: ['password'],
-                                    onBlur: ({ value, fieldApi }) => {
+                                    onChangeListenTo: ['password'],
+                                    onChange: ({ value, fieldApi }) => {
                                         if (
                                             mode === 'signup' &&
                                             value !==
@@ -225,8 +236,11 @@ function Auth() {
                                     },
                                 }}
                                 children={(field) => {
+                                    const passwordField = form.getFieldMeta('password')
                                     const isInvalid =
-                                        field.state.meta.isTouched && !field.state.meta.isValid
+                                        field.state.meta.isBlurred &&
+                                        passwordField?.isBlurred &&
+                                        !field.state.meta.isValid
                                     return (
                                         <Field
                                             data-invalid={isInvalid}

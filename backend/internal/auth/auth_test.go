@@ -243,3 +243,15 @@ func TestRevokeSession(t *testing.T) {
 	_, err = auth.ValidateSession(t.Context(), qtx, refreshToken.Value)
 	require.ErrorIs(t, err, ErrMaliciousSuspicion)
 }
+
+func TestEmailAlreadyTaken(t *testing.T) {
+	auth := New(testSecret)
+	tx, qtx := prepare(t)
+	defer tx.Rollback(t.Context())
+
+	_, err := auth.CreateUser(t.Context(), qtx, "user@gmail.com", "anypassword")
+	require.NoError(t, err)
+
+	_, err = auth.CreateUser(t.Context(), qtx, "user@gmail.com", "anypassword")
+	require.ErrorIs(t, err, ErrEmailAlreadyTaken)
+}

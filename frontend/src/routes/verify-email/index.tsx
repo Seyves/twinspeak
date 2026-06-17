@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
-import { resendVerificationEmail, signOut } from '@/api/auth'
+import * as VerificationApi from '@/api/verification'
+import * as AuthApi from '@/api/auth'
 import { AnimatedBackground } from '@/components/animated-background'
 import { MailWarning, LogOut } from 'lucide-react'
 import { atomWithMutation } from 'jotai-tanstack-query'
@@ -13,7 +14,7 @@ export const Route = createFileRoute('/verify-email/')({
 
 const resendVerificationEmailAtom = atomWithMutation(() => ({
     mutationKey: ['send-verification-email'],
-    mutationFn: resendVerificationEmail,
+    mutationFn: VerificationApi.resend,
 }))
 
 function VerifyEmail() {
@@ -33,7 +34,7 @@ function VerifyEmail() {
     }
 
     const handleSignOut = async () => {
-        await signOut()
+        await AuthApi.signOut()
         navigate({ to: '/auth' })
     }
 

@@ -149,21 +149,29 @@ func (s *Service) GoogleCallback(ctx context.Context, now time.Time, code string
 
 	qtx := s.queries.WithTx(tx)
 
+	// Trying to find existing google integrated account
 	userId, err := s.googleAuth.FindGoogleAccount(ctx, qtx, openIdInfo.Id)
 	if errors.Is(err, googleauth.ErrGoogleAccountNotFound) {
+		// If there is no google integrated account - trying to create new
 		userId, err = s.googleAuth.CreateUser(ctx, qtx, openIdInfo)
-		if err != nil {
+		// If there is an account with the same email - integrating it with the google account
+		if errors.Is(err, googleauth.ErrEmailAlreadyTaken) {
+			userId, err = s.googleAuth.LinkExistingUser(ctx, qtx, openIdInfo)
+			if err != nil {
+				return nil, nil, fmt.Errorf("cannot link existing user account to google: %w", err)
+			}
+		} else if err != nil {
 			return nil, nil, fmt.Errorf("cannot create user: %w", err)
-		}
+		} else {
+			err = s.preferences.CreatePreferences(ctx, qtx, userId)
+			if err != nil {
+				return nil, nil, fmt.Errorf("cannot create user preferences: %w", err)
+			}
 
-		err = s.preferences.CreatePreferences(ctx, qtx, userId)
-		if err != nil {
-			return nil, nil, fmt.Errorf("cannot create user preferences: %w", err)
-		}
-
-		err = s.billing.StartSubscription(ctx, qtx, userId, now)
-		if err != nil {
-			return nil, nil, fmt.Errorf("cannot start subscription: %w", err)
+			err = s.billing.StartSubscription(ctx, qtx, userId, now)
+			if err != nil {
+				return nil, nil, fmt.Errorf("cannot start subscription: %w", err)
+			}
 		}
 	} else if err != nil {
 		return nil, nil, fmt.Errorf("cannot find google account: %w", err)

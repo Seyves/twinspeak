@@ -7,41 +7,24 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
-	"github.com/google/uuid"
 	"github.com/twinspeak/backend/internal/auth"
+	"github.com/twinspeak/backend/internal/googleauth"
 )
 
 const (
-	accessTokenCookie      = "access_token"
-	refreshTokenCookie     = "refresh_token"
-	emailUnverifiedCookie  = "email_unverified"
+	accessTokenCookie     = "access_token"
+	refreshTokenCookie    = "refresh_token"
+	emailUnverifiedCookie = "email_unverified"
+	sessionStateCookie    = "session_state"
 )
 
-func getSecureCookie(key string, value string, expiresAt time.Time) *fiber.Cookie {
-	cookie := new(fiber.Cookie)
-	cookie.Name = key
-	cookie.Value = value
-	cookie.HTTPOnly = true
-	cookie.Secure = true
-	cookie.SameSite = fiber.CookieSameSiteStrictMode
-	cookie.Expires = expiresAt
-	return cookie
-}
-
-func getEmailUnverifiedCookie(unverified bool, expiresAt time.Time) *fiber.Cookie {
-	value := "false"
-	if unverified {
-		value = "true"
-	}
-
-	cookie := new(fiber.Cookie)
-	cookie.Name = emailUnverifiedCookie
-	cookie.Value = value
-	cookie.HTTPOnly = false // Frontend needs to read this
-	cookie.Secure = true
-	cookie.SameSite = fiber.CookieSameSiteStrictMode
-	cookie.Expires = expiresAt
-	return cookie
+func (r *RestApi) MountAuthRoutes(router fiber.Router) {
+	router.Post("/auth/sign-in", r.signIn)
+	router.Post("/auth/sign-up", r.signUp)
+	router.Post("/auth/refresh", r.refresh)
+	router.Post("/auth/logout", r.logout)
+	router.Get("/auth/google/sign-in", r.googleSignIn)
+	router.Post("/auth/google/callback", r.googleCallback)
 }
 
 func (r *RestApi) signIn(c *fiber.Ctx) error {
@@ -101,7 +84,9 @@ func (r *RestApi) signUp(c *fiber.Ctx) error {
 	// ip, _ := netip.ParseAddr(c.IP())
 
 	accessToken, refreshToken, err := r.users.SignUp(c.Context(), time.Now(), req.Email, req.Password)
-	if err != nil {
+	if errors.Is(err, auth.ErrEmailAlreadyTaken) {
+		return fiber.NewError(fiber.StatusConflict, "email already taken")
+	} else if err != nil {
 		log.Errorf("Error during sign up: %s", err.Error())
 		return fiber.NewError(fiber.StatusInternalServerError, internalServerError)
 	}
@@ -149,20 +134,6 @@ func (r *RestApi) refresh(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusOK)
 }
 
-func (r *RestApi) getWSTiket(c *fiber.Ctx) error {
-	userId := c.Locals("userId").(uuid.UUID)
-	ticket, err := r.users.GetWSTicket(c.Context(), time.Now(), userId)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, internalServerError)
-	}
-	type response struct {
-		Ticket string `json:"ticket"`
-	}
-	return c.JSON(response{
-		Ticket: ticket.Value,
-	})
-}
-
 func (r *RestApi) logout(c *fiber.Ctx) error {
 	refreshToken := c.Cookies(refreshTokenCookie)
 	if refreshToken != "" {
@@ -175,4 +146,81 @@ func (r *RestApi) logout(c *fiber.Ctx) error {
 	c.Cookie(getSecureCookie(refreshTokenCookie, "", expiredTime))
 
 	return c.SendStatus(fiber.StatusOK)
+}
+
+func (r *RestApi) googleSignIn(c *fiber.Ctx) error {
+	url, state, err := r.users.GoogleRedirect()
+	if err != nil {
+		log.Errorf("Error generation sign-in url: %s", err.Error())
+		return fiber.NewError(fiber.StatusInternalServerError, internalServerError)
+	}
+	stateExpiresAt := time.Now().Add(time.Minute * 10)
+	c.Cookie(getSecureCookie("session_state", state, stateExpiresAt))
+	return c.Redirect(url, fiber.StatusTemporaryRedirect)
+}
+
+func (r *RestApi) googleCallback(c *fiber.Ctx) error {
+	type request struct {
+		Code  string `json:"code"`
+		State string `json:"state"`
+	}
+
+	var req request
+	err := json.Unmarshal(c.Request().Body(), &req)
+	if err != nil {
+		log.Errorf("Error unmarshalling request body: %s", err.Error())
+		return fiber.NewError(fiber.StatusBadRequest, invalidRequestBody)
+	}
+
+	sessionState := c.Cookies("session_state")
+	// userAgent := string(c.Context().UserAgent())
+	// ip, _ := netip.ParseAddr(c.IP())
+
+	accessToken, refreshToken, err := r.users.GoogleCallback(c.Context(), time.Now(), req.Code, sessionState, req.State)
+	if errors.Is(err, googleauth.ErrGoogleInvalidState) ||
+		errors.Is(err, googleauth.ErrGoogleCannotExchange) ||
+		errors.Is(err, googleauth.ErrGoogleInvalidIdToken) {
+		log.Errorf("Error while processing redirect: %s", err.Error())
+		return fiber.NewError(fiber.StatusUnauthorized, "invalid or expired creds")
+	} else if err != nil {
+		log.Errorf("Error while processing redirect: %s", err.Error())
+		return fiber.NewError(fiber.StatusInternalServerError, internalServerError)
+	}
+
+	c.Cookie(getSecureCookie(refreshTokenCookie, refreshToken.Value, refreshToken.ExpiresAt))
+	c.Cookie(getSecureCookie(accessTokenCookie, accessToken.Value, accessToken.ExpiresAt))
+	c.Cookie(getEmailUnverifiedCookie(false, accessToken.ExpiresAt)) // Google users are auto-verified
+	// Killing session state cookie
+	c.Cookie(getSecureCookie(sessionStateCookie, "", time.Unix(0, 0)))
+
+	return c.SendStatus(fiber.StatusOK)
+}
+
+func getSecureCookie(key string, value string, expiresAt time.Time) *fiber.Cookie {
+	cookie := new(fiber.Cookie)
+	cookie.Name = key
+	cookie.Value = value
+	cookie.HTTPOnly = true
+	cookie.Secure = true
+	cookie.SameSite = fiber.CookieSameSiteLaxMode
+	cookie.Expires = expiresAt
+	cookie.Path = "/"
+	return cookie
+}
+
+func getEmailUnverifiedCookie(unverified bool, expiresAt time.Time) *fiber.Cookie {
+	value := "false"
+	if unverified {
+		value = "true"
+	}
+
+	cookie := new(fiber.Cookie)
+	cookie.Name = emailUnverifiedCookie
+	cookie.Value = value
+	cookie.HTTPOnly = false // Frontend needs to read this
+	cookie.Secure = true
+	cookie.SameSite = fiber.CookieSameSiteLaxMode
+	cookie.Expires = expiresAt
+	cookie.Path = "/"
+	return cookie
 }

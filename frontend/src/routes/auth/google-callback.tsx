@@ -1,6 +1,6 @@
 import Loader from '@/components/ui/loader'
-import { googleProcessCallback, redirectToGoogleAuth, type GoogleCallbackParams } from '@/api/auth'
-import { createFileRoute, useNavigate, useSearch } from '@tanstack/react-router'
+import * as AuthApi from '@/api/auth'
+import { createFileRoute, useSearch } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { useAtom } from 'jotai'
 import ErrorPage from '@/components/Error'
@@ -9,12 +9,12 @@ import { atomWithMutation } from 'jotai-tanstack-query'
 
 const googleCallbackAtom = atomWithMutation(() => ({
     mutationKey: ['google-callback'],
-    mutationFn: googleProcessCallback,
+    mutationFn: AuthApi.googleProcessCallback,
 }))
 
 export const Route = createFileRoute('/auth/google-callback')({
     component: RouteComponent,
-    validateSearch: (search): GoogleCallbackParams => {
+    validateSearch: (search): AuthApi.GoogleCallbackParams => {
         return {
             code: search.code ? String(search.code) : '',
             state: search.state ? String(search.state) : '',
@@ -23,7 +23,6 @@ export const Route = createFileRoute('/auth/google-callback')({
 })
 
 function RouteComponent() {
-    const navigate = useNavigate()
     const params = useSearch({ from: '/auth/google-callback' })
     const [{ mutate, isSuccess, isError, error }] = useAtom(googleCallbackAtom)
 
@@ -32,9 +31,9 @@ function RouteComponent() {
     }, [])
 
     useEffect(() => {
-        console.log(isSuccess)
         if (!isSuccess) return
-        navigate({ to: '/' })
+        // Full page reload to remove Referrer header where google persists
+        window.location.href = '/'
     }, [isSuccess])
 
     if (isError) {
@@ -42,11 +41,11 @@ function RouteComponent() {
             return (
                 <ErrorPage
                     message="Your session has either expired or is invalid."
-                    onRetry={redirectToGoogleAuth}
+                    onRetry={AuthApi.redirectToGoogleAuth}
                 />
             )
         }
-        return <ErrorPage onRetry={redirectToGoogleAuth} />
+        return <ErrorPage onRetry={AuthApi.redirectToGoogleAuth} />
     }
 
     return <Loader />

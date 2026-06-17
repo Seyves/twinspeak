@@ -3,13 +3,13 @@ import { httpClient } from '@/lib/httpClient'
 
 const BACKEND_HOST = import.meta.env.VITE_WS_BACKEND_HOST
 
-async function getWsTicket(): Promise<string> {
-    const data = await httpClient.get('/ws-ticket').json<{ ticket: string }>()
+async function getTicket(): Promise<string> {
+    const data = await httpClient.get('/ws/ticket').json<{ ticket: string }>()
     return data.ticket
 }
 
 export async function startSession(inLang: string, outLang: string, side: ChatSide) {
-    const ticket = await getWsTicket()
+    const ticket = await getTicket()
     const query = new URLSearchParams()
 
     query.set('ticket', ticket)
