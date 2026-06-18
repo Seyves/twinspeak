@@ -50,6 +50,7 @@ export function OverflowMenu() {
             loading: 'Clearing chat...',
             success: 'Chat cleared successfully',
             error: 'Failed to clear chat',
+            position: "top-right"
         })
 
         setShowConfirm(false)
@@ -67,7 +68,7 @@ export function OverflowMenu() {
                         <MoreVertical className="size-5 text-muted-foreground" />
                     </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-auto">
+                <DropdownMenuContent align="end" className="w-auto" sideOffset={8}>
                     <DropdownMenuItem asChild>
                         <Link to="/settings" className="flex cursor-pointer items-center">
                             <Settings className="mr-2 size-5" />

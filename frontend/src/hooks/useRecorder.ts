@@ -113,6 +113,13 @@ export function useRecorder({
                                 status: 'processed',
                             }))
                             break
+                        case eventTypes.error:
+                            setRecordingMessage((prev) => ({
+                                ...prev,
+                                status: 'error',
+                            }))
+                            stopRecording()
+                            break
                     }
                     console.log('Gladia message:', message)
                 } catch (err) {

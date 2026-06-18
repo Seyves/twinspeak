@@ -3,7 +3,7 @@ export const eventTypes = {
     liveTranslate: 1,
     finalTranscript: 2,
     finalTranslate: 3,
-    duration: 4,
+    error: 4,
 } as const
 
 export type EventType = (typeof eventTypes)[keyof typeof eventTypes]

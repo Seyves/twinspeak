@@ -166,13 +166,15 @@ func (r *RestApi) startSession(c *websocket.Conn) {
 		Out: outLang,
 	}
 
-	err = r.pipeline.Pipe(ctx, langConfig, in, out)
-	if err != nil {
+	if err = r.pipeline.Pipe(ctx, langConfig, in, out); err != nil {
 		log.Errorf("Error during pipe: %s", err.Error())
+		evt := speechpipeline.NewSpeechEvent(speechpipeline.ErrorEvt, "internal server error")
+		c.WriteJSON(evt)
 	}
 
-	err = eg.Wait()
-	if err != nil {
+	if err = eg.Wait(); err != nil {
 		log.Errorf("Error client WS connection: %s", err.Error())
+		evt := speechpipeline.NewSpeechEvent(speechpipeline.ErrorEvt, "internal server error")
+		c.WriteJSON(evt)
 	}
 }
