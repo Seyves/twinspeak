@@ -230,13 +230,14 @@ type HttpRequest struct {
 }
 
 type Preference struct {
-	ID              uuid.UUID
-	UserID          uuid.UUID
-	ChatMessageSize Size
-	Theme           Theme
-	InLang          string
-	OutLang         string
-	UpdatedAt       *time.Time
+	ID                 uuid.UUID
+	UserID             uuid.UUID
+	ChatMessageSize    Size
+	Theme              Theme
+	InLang             string
+	OutLang            string
+	HideMessagesBefore *time.Time
+	UpdatedAt          *time.Time
 }
 
 type RefreshSession struct {

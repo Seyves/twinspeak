@@ -21,6 +21,7 @@ create table preferences (
     theme theme not null default 'system',
     in_lang text not null default 'en' check (length(in_lang) > 1),
     out_lang text not null default 'fr' check (length(in_lang) > 1),
+    hide_messages_before timestamptz(3),
     updated_at timestamptz(3)
 );
 

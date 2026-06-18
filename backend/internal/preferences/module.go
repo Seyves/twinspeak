@@ -3,6 +3,7 @@ package preferences
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/twinspeak/backend/internal/db"
@@ -32,4 +33,15 @@ func (m *Module) GetPreferences(ctx context.Context, tx *db.Queries, userId uuid
 		return nil, fmt.Errorf("cannot select preferences from db: %w", err)
 	}
 	return &prefs, err
+}
+
+func (m *Module) SetHideMessagesTimestamp(ctx context.Context, tx *db.Queries, userId uuid.UUID, timestamp time.Time) error {
+	err := tx.SetHideMessagesTimestamp(ctx, db.SetHideMessagesTimestampParams{
+		UserID:             userId,
+		HideMessagesBefore: &timestamp,
+	})
+	if err != nil {
+		return fmt.Errorf("cannot update hide messages in db: %w", err)
+	}
+	return nil
 }

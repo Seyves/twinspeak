@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button'
-import { ArrowLeftRight, Settings } from 'lucide-react'
+import { ArrowLeftRight } from 'lucide-react'
 import LangCombobox from './LangCombobox'
-import { Link } from '@tanstack/react-router'
+import { OverflowMenu } from './OverflowMenu'
 import * as CommonApi from '@/api/common'
 import type { MutateFunction } from 'jotai-tanstack-query'
 
@@ -54,15 +54,7 @@ export default function Languages(props: {
                 />
             </div>
             <div className="">
-                <Link to={'/settings'}>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="rounded-full hover:bg-primary/10"
-                    >
-                        <Settings className="size-5 text-muted-foreground" />
-                    </Button>
-                </Link>
+                <OverflowMenu />
             </div>
         </div>
     )

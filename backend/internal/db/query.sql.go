@@ -294,10 +294,12 @@ func (q *Queries) GetRefreshSessionForUpdate(ctx context.Context, tokenHash []by
 }
 
 const getSpeeches = `-- name: GetSpeeches :many
-select id, user_id, in_lang, out_lang, transcription, translation, chat_side, started_at, ended_at from (
-    select id, user_id, in_lang, out_lang, transcription, translation, chat_side, started_at, ended_at from speeches 
-    where user_id = $1 
-    order by started_at desc 
+select s.id, s.user_id, s.in_lang, s.out_lang, s.transcription, s.translation, s.chat_side, s.started_at, s.ended_at from (
+    select s.id, s.user_id, s.in_lang, s.out_lang, s.transcription, s.translation, s.chat_side, s.started_at, s.ended_at from speeches s
+    join preferences p on s.user_id = p.user_id
+    where s.user_id = $1 
+        and (s.started_at >= p.hide_messages_before or p.hide_messages_before is null)
+    order by s.started_at desc 
     limit $2
 ) as s
 order by s.started_at asc
@@ -437,7 +439,7 @@ func (q *Queries) GetUserCreditGrants(ctx context.Context, arg GetUserCreditGran
 }
 
 const getUserPrefs = `-- name: GetUserPrefs :one
-select id, user_id, chat_message_size, theme, in_lang, out_lang, updated_at from preferences where user_id = $1
+select id, user_id, chat_message_size, theme, in_lang, out_lang, hide_messages_before, updated_at from preferences where user_id = $1
 `
 
 func (q *Queries) GetUserPrefs(ctx context.Context, userID uuid.UUID) (Preference, error) {
@@ -450,6 +452,7 @@ func (q *Queries) GetUserPrefs(ctx context.Context, userID uuid.UUID) (Preferenc
 		&i.Theme,
 		&i.InLang,
 		&i.OutLang,
+		&i.HideMessagesBefore,
 		&i.UpdatedAt,
 	)
 	return i, err
@@ -601,6 +604,22 @@ update refresh_sessions set revoked_at = now() where token_hash = $1
 
 func (q *Queries) RevokeRefreshSession(ctx context.Context, tokenHash []byte) error {
 	_, err := q.db.Exec(ctx, revokeRefreshSession, tokenHash)
+	return err
+}
+
+const setHideMessagesTimestamp = `-- name: SetHideMessagesTimestamp :exec
+update preferences
+set hide_messages_before = $2
+where user_id = $1
+`
+
+type SetHideMessagesTimestampParams struct {
+	UserID             uuid.UUID
+	HideMessagesBefore *time.Time
+}
+
+func (q *Queries) SetHideMessagesTimestamp(ctx context.Context, arg SetHideMessagesTimestampParams) error {
+	_, err := q.db.Exec(ctx, setHideMessagesTimestamp, arg.UserID, arg.HideMessagesBefore)
 	return err
 }
 

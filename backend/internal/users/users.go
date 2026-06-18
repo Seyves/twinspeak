@@ -263,6 +263,10 @@ func (s *Service) GetSpeeches(ctx context.Context, userId uuid.UUID) ([]db.Speec
 	return s.metrics.GetSpeeches(ctx, s.queries, userId)
 }
 
+func (s *Service) SetHideMessagesTimestamp(ctx context.Context, userId uuid.UUID, timestamp time.Time) error {
+	return s.preferences.SetHideMessagesTimestamp(ctx, s.queries, userId, timestamp)
+}
+
 func (s *Service) CreateHttpRequestMetric(ctx context.Context, data db.InsertHttpRequestParams) error {
 	return s.metrics.CreateHttpRequestMetric(ctx, s.queries, data)
 }
@@ -308,13 +312,17 @@ func New(
 	googleauth *googleauth.Module,
 	billing *billing.Module,
 	emailModule *email.Module,
+	preferences *preferences.Module,
+	metrics *metrics.Module,
 ) *Service {
 	return &Service{
-		db:         db,
-		queries:    queries,
-		auth:       auth,
-		googleAuth: googleauth,
-		billing:    billing,
-		email:      emailModule,
+		db:          db,
+		queries:     queries,
+		auth:        auth,
+		googleAuth:  googleauth,
+		billing:     billing,
+		email:       emailModule,
+		preferences: preferences,
+		metrics:     metrics,
 	}
 }

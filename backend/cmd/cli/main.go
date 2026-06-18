@@ -15,6 +15,8 @@ import (
 	"github.com/twinspeak/backend/internal/db"
 	"github.com/twinspeak/backend/internal/email"
 	"github.com/twinspeak/backend/internal/googleauth"
+	"github.com/twinspeak/backend/internal/metrics"
+	"github.com/twinspeak/backend/internal/preferences"
 	"github.com/twinspeak/backend/internal/users"
 )
 
@@ -43,7 +45,9 @@ func initDeps(cfgPath string) (*deps, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot create email module: %w", err)
 	}
-	userss := users.New(pool, queries, authm, googleauthm, billingm, emailm)
+	metricss := metrics.New(pool, queries)
+	preferencesm := &preferences.Module{}
+	userss := users.New(pool, queries, authm, googleauthm, billingm, emailm, preferencesm, metricss)
 
 	return &deps{
 		pool:  pool,

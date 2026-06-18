@@ -46,6 +46,11 @@ set
     updated_at = now()
 where user_id = $1;
 
+-- name: SetHideMessagesTimestamp :exec
+update preferences
+set hide_messages_before = $2
+where user_id = $1;
+
 -- name: CreateSubscription :one
 insert into subscriptions (user_id, next_monthly_grant_at) values ($1, $2)
 returning id;
@@ -146,10 +151,12 @@ insert into speeches (
 );
 
 -- name: GetSpeeches :many
-select * from (
-    select * from speeches 
-    where user_id = $1 
-    order by started_at desc 
+select s.* from (
+    select s.* from speeches s
+    join preferences p on s.user_id = p.user_id
+    where s.user_id = $1 
+        and (s.started_at >= p.hide_messages_before or p.hide_messages_before is null)
+    order by s.started_at desc 
     limit $2
 ) as s
 order by s.started_at asc;

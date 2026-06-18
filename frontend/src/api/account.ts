@@ -42,6 +42,10 @@ export async function getMessages() {
     return await httpClient.get('/account/messages').json<Message[]>()
 }
 
+export async function clearChat() {
+    return await httpClient.post('/account/clear-chat')
+}
+
 export async function getCredits(): Promise<CreditGrant[]> {
     const response = await httpClient.get('/account/credits')
     return response.json()

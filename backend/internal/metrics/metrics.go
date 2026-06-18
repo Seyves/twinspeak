@@ -32,7 +32,7 @@ func (m *Module) CreateSpeechMetric(ctx context.Context, tx *db.Queries, params 
 func (m *Module) GetSpeeches(ctx context.Context, tx *db.Queries, userId uuid.UUID) ([]db.Speech, error) {
 	speeches, err := tx.GetSpeeches(ctx, db.GetSpeechesParams{
 		UserID: userId,
-		Limit: 20,
+		Limit:  20,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

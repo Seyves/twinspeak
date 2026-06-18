@@ -13,6 +13,7 @@ import (
 	"github.com/twinspeak/backend/internal/email"
 	"github.com/twinspeak/backend/internal/googleauth"
 	"github.com/twinspeak/backend/internal/metrics"
+	"github.com/twinspeak/backend/internal/preferences"
 	"github.com/twinspeak/backend/internal/server"
 	"github.com/twinspeak/backend/internal/speechpipeline"
 	"github.com/twinspeak/backend/internal/users"
@@ -48,7 +49,8 @@ func main() {
 	}
 
 	metricss := metrics.New(pool, queries)
-	userss := users.New(pool, queries, authm, googleauthm, billing, emailm)
+	preferencesm := &preferences.Module{}
+	userss := users.New(pool, queries, authm, googleauthm, billing, emailm, preferencesm, metricss)
 
 	var p speechpipeline.Pipeline
 	switch cfg.Pipeline {

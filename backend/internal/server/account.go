@@ -15,6 +15,7 @@ func (r *RestApi) MountAccountRoutes(router fiber.Router) {
 	router.Get("/account/preferences", r.getPreferences)
 	router.Put("/account/preferences", r.updatePreferences)
 	router.Get("/account/messages", r.getMessages)
+	router.Post("/account/clear-chat", r.clearChat)
 	router.Get("/account/credits", r.getCredits)
 }
 
@@ -124,6 +125,19 @@ func (r *RestApi) getMessages(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(resp)
+}
+
+func (r *RestApi) clearChat(c *fiber.Ctx) error {
+	userID := c.Locals("userId").(uuid.UUID)
+
+	now := time.Now()
+	err := r.users.SetHideMessagesTimestamp(c.Context(), userID, now)
+	if err != nil {
+		log.Errorf("Error setting hide messages timestamp: %s", err.Error())
+		return fiber.NewError(fiber.StatusInternalServerError, internalServerError)
+	}
+
+	return c.SendStatus(fiber.StatusOK)
 }
 
 func (r *RestApi) getCredits(c *fiber.Ctx) error {
