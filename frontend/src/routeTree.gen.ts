@@ -18,6 +18,7 @@ import { Route as AuthIndexRouteImport } from './routes/auth/index'
 import { Route as VerifyEmailCallbackRouteImport } from './routes/verify-email/callback'
 import { Route as SettingsPreferencesRouteImport } from './routes/settings/preferences'
 import { Route as SettingsAccountRouteImport } from './routes/settings/account'
+import { Route as AuthRecoveryRouteImport } from './routes/auth/recovery'
 import { Route as AuthGoogleCallbackRouteImport } from './routes/auth/google-callback'
 
 const VerifyEmailRouteRoute = VerifyEmailRouteRouteImport.update({
@@ -65,6 +66,11 @@ const SettingsAccountRoute = SettingsAccountRouteImport.update({
   path: '/account',
   getParentRoute: () => SettingsRouteRoute,
 } as any)
+const AuthRecoveryRoute = AuthRecoveryRouteImport.update({
+  id: '/auth/recovery',
+  path: '/auth/recovery',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthGoogleCallbackRoute = AuthGoogleCallbackRouteImport.update({
   id: '/auth/google-callback',
   path: '/auth/google-callback',
@@ -76,6 +82,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRouteRouteWithChildren
   '/verify-email': typeof VerifyEmailRouteRouteWithChildren
   '/auth/google-callback': typeof AuthGoogleCallbackRoute
+  '/auth/recovery': typeof AuthRecoveryRoute
   '/settings/account': typeof SettingsAccountRoute
   '/settings/preferences': typeof SettingsPreferencesRoute
   '/verify-email/callback': typeof VerifyEmailCallbackRoute
@@ -86,6 +93,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth/google-callback': typeof AuthGoogleCallbackRoute
+  '/auth/recovery': typeof AuthRecoveryRoute
   '/settings/account': typeof SettingsAccountRoute
   '/settings/preferences': typeof SettingsPreferencesRoute
   '/verify-email/callback': typeof VerifyEmailCallbackRoute
@@ -99,6 +107,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRouteRouteWithChildren
   '/verify-email': typeof VerifyEmailRouteRouteWithChildren
   '/auth/google-callback': typeof AuthGoogleCallbackRoute
+  '/auth/recovery': typeof AuthRecoveryRoute
   '/settings/account': typeof SettingsAccountRoute
   '/settings/preferences': typeof SettingsPreferencesRoute
   '/verify-email/callback': typeof VerifyEmailCallbackRoute
@@ -113,6 +122,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/verify-email'
     | '/auth/google-callback'
+    | '/auth/recovery'
     | '/settings/account'
     | '/settings/preferences'
     | '/verify-email/callback'
@@ -123,6 +133,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth/google-callback'
+    | '/auth/recovery'
     | '/settings/account'
     | '/settings/preferences'
     | '/verify-email/callback'
@@ -135,6 +146,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/verify-email'
     | '/auth/google-callback'
+    | '/auth/recovery'
     | '/settings/account'
     | '/settings/preferences'
     | '/verify-email/callback'
@@ -148,6 +160,7 @@ export interface RootRouteChildren {
   SettingsRouteRoute: typeof SettingsRouteRouteWithChildren
   VerifyEmailRouteRoute: typeof VerifyEmailRouteRouteWithChildren
   AuthGoogleCallbackRoute: typeof AuthGoogleCallbackRoute
+  AuthRecoveryRoute: typeof AuthRecoveryRoute
   AuthIndexRoute: typeof AuthIndexRoute
 }
 
@@ -216,6 +229,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsAccountRouteImport
       parentRoute: typeof SettingsRouteRoute
     }
+    '/auth/recovery': {
+      id: '/auth/recovery'
+      path: '/auth/recovery'
+      fullPath: '/auth/recovery'
+      preLoaderRoute: typeof AuthRecoveryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth/google-callback': {
       id: '/auth/google-callback'
       path: '/auth/google-callback'
@@ -260,6 +280,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRouteRoute: SettingsRouteRouteWithChildren,
   VerifyEmailRouteRoute: VerifyEmailRouteRouteWithChildren,
   AuthGoogleCallbackRoute: AuthGoogleCallbackRoute,
+  AuthRecoveryRoute: AuthRecoveryRoute,
   AuthIndexRoute: AuthIndexRoute,
 }
 export const routeTree = rootRouteImport

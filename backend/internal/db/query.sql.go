@@ -87,6 +87,25 @@ func (q *Queries) CreateCreditGrant(ctx context.Context, arg CreateCreditGrantPa
 	return err
 }
 
+const createPasswordResetToken = `-- name: CreatePasswordResetToken :one
+insert into password_reset_tokens (user_id, token_hash, expires_at)
+values ($1, $2, $3)
+returning id
+`
+
+type CreatePasswordResetTokenParams struct {
+	UserID    uuid.UUID
+	TokenHash []byte
+	ExpiresAt time.Time
+}
+
+func (q *Queries) CreatePasswordResetToken(ctx context.Context, arg CreatePasswordResetTokenParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, createPasswordResetToken, arg.UserID, arg.TokenHash, arg.ExpiresAt)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const createRefreshSession = `-- name: CreateRefreshSession :one
 insert into refresh_sessions (
     user_id, token_hash, user_agent, ip, expires_at
@@ -170,12 +189,30 @@ func (q *Queries) CreateVerificationToken(ctx context.Context, arg CreateVerific
 	return id, err
 }
 
+const deleteExpiredPasswordResetTokens = `-- name: DeleteExpiredPasswordResetTokens :exec
+delete from password_reset_tokens where expires_at <= now()
+`
+
+func (q *Queries) DeleteExpiredPasswordResetTokens(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, deleteExpiredPasswordResetTokens)
+	return err
+}
+
 const deleteExpiredVerificationTokens = `-- name: DeleteExpiredVerificationTokens :exec
 delete from email_verification_tokens where expires_at <= now()
 `
 
 func (q *Queries) DeleteExpiredVerificationTokens(ctx context.Context) error {
 	_, err := q.db.Exec(ctx, deleteExpiredVerificationTokens)
+	return err
+}
+
+const deletePasswordResetToken = `-- name: DeletePasswordResetToken :exec
+delete from password_reset_tokens where token_hash = $1
+`
+
+func (q *Queries) DeletePasswordResetToken(ctx context.Context, tokenHash []byte) error {
+	_, err := q.db.Exec(ctx, deletePasswordResetToken, tokenHash)
 	return err
 }
 
@@ -251,6 +288,24 @@ func (q *Queries) GetExpiredSubscriptions(ctx context.Context, nextMonthlyGrantA
 		return nil, err
 	}
 	return items, nil
+}
+
+const getPasswordResetToken = `-- name: GetPasswordResetToken :one
+select id, user_id, token_hash, created_at, expires_at from password_reset_tokens 
+where token_hash = $1 and expires_at > now()
+`
+
+func (q *Queries) GetPasswordResetToken(ctx context.Context, tokenHash []byte) (PasswordResetToken, error) {
+	row := q.db.QueryRow(ctx, getPasswordResetToken, tokenHash)
+	var i PasswordResetToken
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.TokenHash,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+	)
+	return i, err
 }
 
 const getRefreshSession = `-- name: GetRefreshSession :one
@@ -652,6 +707,20 @@ type UpdateSubscriptionParams struct {
 
 func (q *Queries) UpdateSubscription(ctx context.Context, arg UpdateSubscriptionParams) error {
 	_, err := q.db.Exec(ctx, updateSubscription, arg.UserID, arg.NextMonthlyGrantAt)
+	return err
+}
+
+const updateUserPassword = `-- name: UpdateUserPassword :exec
+update users set password_hash = $2 where id = $1
+`
+
+type UpdateUserPasswordParams struct {
+	ID           uuid.UUID
+	PasswordHash []byte
+}
+
+func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error {
+	_, err := q.db.Exec(ctx, updateUserPassword, arg.ID, arg.PasswordHash)
 	return err
 }
 

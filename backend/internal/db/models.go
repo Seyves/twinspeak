@@ -229,6 +229,14 @@ type HttpRequest struct {
 	CreatedAt            *time.Time
 }
 
+type PasswordResetToken struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	TokenHash []byte
+	CreatedAt time.Time
+	ExpiresAt time.Time
+}
+
 type Preference struct {
 	ID                 uuid.UUID
 	UserID             uuid.UUID

@@ -66,6 +66,23 @@ Frontend has Vitest configured (`pnpm test`) but no tests exist yet.
 - Path alias: `@/*` → `./src/*` (tsconfig.json:10-13)
 - Also supports: `#/*` → `./src/*` (package.json:5-7)
 
+## Frontend State Management
+
+**Jotai with TanStack Query Integration:**
+
+- Read-only queries: use `atomWithQuery` for GET requests (e.g., `messagesAtom`, `preferencesAtom`)
+- Write operations: **always use `atomWithMutation`** for POST/PUT/DELETE requests that need lifecycle management
+  - Provides loading states (`isPending`)
+  - Handles success/error callbacks
+  - Supports query invalidation via `queryClientAtom`
+  - Integrates with toast notifications using `toast.promise`
+
+**Key points:**
+
+- Mutations handle query invalidation internally via `onSuccess`
+- Use `toast.promise` for consistent user feedback
+- Never manually manage loading/error states when `atomWithMutation` is available
+
 ## API Integration
 
 Frontend assumes backend is at `backend:8080` in Docker network. Proxied through:

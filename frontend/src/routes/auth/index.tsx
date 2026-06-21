@@ -12,6 +12,13 @@ import { createServerFn } from '@tanstack/react-start'
 import { getCookie } from '@tanstack/react-start/server'
 import { atomWithMutation } from 'jotai-tanstack-query'
 import { useAtom } from 'jotai'
+import {
+    AlertDialog,
+    AlertDialogContent,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogDescription,
+} from '@/components/ui/alert-dialog'
 
 export const Route = createFileRoute('/auth/')({
     component: Auth,
@@ -41,12 +48,20 @@ const authAtom = atomWithMutation(() => ({
     },
 }))
 
+const forgotPasswordAtom = atomWithMutation(() => ({
+    mutationKey: ['forgot-password'],
+    mutationFn: AuthApi.requestPasswordReset,
+}))
+
 type AuthMode = 'signin' | 'signup'
 
 function Auth() {
     const navigate = useNavigate()
     const [mode, setMode] = useState<AuthMode>('signin')
-    const [{ mutateAsync, isPending }] = useAtom(authAtom)
+    const [showForgotPassword, setShowForgotPassword] = useState(false)
+    const [{ mutateAsync: authMutate, isPending }] = useAtom(authAtom)
+    const [{ mutateAsync: forgotPasswordMutate, isPending: isForgotPasswordPending }] =
+        useAtom(forgotPasswordAtom)
 
     const form = useForm({
         defaultValues: {
@@ -56,7 +71,7 @@ function Auth() {
         },
         onSubmit: async ({ value }) => {
             toast.promise(
-                () => mutateAsync({ mode: mode, email: value.email, password: value.password }),
+                () => authMutate({ mode: mode, email: value.email, password: value.password }),
                 {
                     loading: 'Working on it...',
                     success: () => {
@@ -73,6 +88,7 @@ function Auth() {
                                     return 'Email already taken'
                                 }
                         }
+                        return 'Something went wrong :('
                     },
                     position: 'top-right',
                 },
@@ -85,14 +101,35 @@ function Auth() {
         AuthApi.redirectToGoogleAuth()
     }
 
+    const forgotPasswordForm = useForm({
+        defaultValues: {
+            email: '',
+        },
+        onSubmit: async ({ value }) => {
+            toast.promise(() => forgotPasswordMutate(value.email), {
+                loading: 'Sending reset email...',
+                success: () => {
+                    setShowForgotPassword(false)
+                    return 'Password reset email sent! Check your inbox.'
+                },
+                error: (e) => {
+                    if (!(e instanceof HTTPError)) return 'Something went wrong :('
+                    if (e.response.status === 404 && e.data === AuthApi.userNotFound) {
+                        return 'User with that email does not exist'
+                    }
+                    return 'Something went wrong :('
+                },
+                position: 'top-right',
+            })
+        },
+    })
+
     return (
         <div className="bg-[#f1f2f7] dark:bg-[#060607] relative w-full h-screen flex flex-col items-center justify-center overflow-y-auto">
             <AnimatedBackground />
 
-            {/* Content - scrollable on small screens */}
             <div className="relative z-10 w-full max-w-md px-4 py-4 sm:py-8 my-auto">
                 <div className="backdrop-blur-xl bg-card/80 dark:bg-card/40 border border-border shadow-2xl rounded-2xl p-6 sm:p-8">
-                    {/* Header */}
                     <div className="mb-6 sm:mb-8 text-center">
                         <h1 className="text-2xl sm:text-3xl font-semibold bg-linear-to-r from-primary to-accent bg-clip-text text-transparent mb-1 sm:mb-2">
                             TwinSpeak
@@ -102,7 +139,6 @@ function Auth() {
                         </p>
                     </div>
 
-                    {/* Mode Toggle */}
                     <div className="flex gap-2 mb-6 sm:mb-8 bg-muted p-1 rounded-lg">
                         <Button
                             onClick={() => setMode('signin')}
@@ -120,7 +156,6 @@ function Auth() {
                         </Button>
                     </div>
 
-                    {/* Form */}
                     <form
                         onSubmit={(e) => {
                             e.preventDefault()
@@ -219,6 +254,19 @@ function Auth() {
                             }}
                         ></form.Field>
 
+                        {mode === 'signin' && (
+                            <div className="text-right">
+                                <Button
+                                    type="button"
+                                    onClick={() => setShowForgotPassword(true)}
+                                    variant="link"
+                                    className="h-auto p-0 text-xs text-muted-foreground hover:text-foreground"
+                                >
+                                    Forgot password?
+                                </Button>
+                            </div>
+                        )}
+
                         {mode === 'signup' && (
                             <form.Field
                                 name="confirmPassword"
@@ -279,7 +327,6 @@ function Auth() {
                             ></form.Field>
                         )}
 
-                        {/* Submit Button */}
                         <Button
                             type="submit"
                             disabled={isPending}
@@ -293,7 +340,6 @@ function Auth() {
                         </Button>
                     </form>
 
-                    {/* Divider */}
                     <div className="relative my-4 sm:my-6">
                         <div className="absolute inset-0 flex items-center">
                             <div className="w-full border-t border-border"></div>
@@ -305,7 +351,6 @@ function Auth() {
                         </div>
                     </div>
 
-                    {/* Google OAuth Button */}
                     <Button onClick={handleGoogleAuth} variant="outline" className="w-full h-10">
                         <svg
                             className="w-4 h-4 sm:w-5 sm:h-5"
@@ -337,7 +382,6 @@ function Auth() {
                         </span>
                     </Button>
 
-                    {/* Footer Text */}
                     <p className="text-center text-xs text-muted-foreground mt-4 sm:mt-6">
                         {mode === 'signin' ? (
                             <>
@@ -365,11 +409,80 @@ function Auth() {
                     </p>
                 </div>
 
-                {/* Bottom Info */}
                 <p className="text-center text-xs text-muted-foreground mt-4 sm:mt-8 px-2">
                     By continuing, you agree to our Terms of Service and Privacy Policy
                 </p>
             </div>
+
+            <AlertDialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>
+                <AlertDialogContent className="max-w-md">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Reset your password</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Enter your email address and we'll send you a link to reset your
+                            password.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+
+                    <form
+                        onSubmit={(e) => {
+                            e.preventDefault()
+                            forgotPasswordForm.handleSubmit()
+                        }}
+                        className="space-y-4"
+                    >
+                        <forgotPasswordForm.Field
+                            name="email"
+                            validators={{
+                                onBlur: ({ value }) => {
+                                    return !value.includes('@')
+                                        ? 'Please provide valid email address'
+                                        : undefined
+                                },
+                            }}
+                            children={(field) => {
+                                const isInvalid =
+                                    field.state.meta.isTouched && !field.state.meta.isValid
+                                return (
+                                    <Field data-invalid={isInvalid} className="space-y-2">
+                                        <FieldLabel htmlFor={field.name}>Email</FieldLabel>
+                                        <Input
+                                            id={field.name}
+                                            name={field.name}
+                                            type="email"
+                                            value={field.state.value}
+                                            onBlur={field.handleBlur}
+                                            onChange={(e) => field.handleChange(e.target.value)}
+                                            aria-invalid={isInvalid}
+                                            placeholder="you@example.com"
+                                            disabled={isForgotPasswordPending}
+                                        />
+                                        {isInvalid && (
+                                            <FieldError
+                                                errors={[{ message: field.state.meta.errors[0] }]}
+                                            />
+                                        )}
+                                    </Field>
+                                )
+                            }}
+                        ></forgotPasswordForm.Field>
+
+                        <div className="flex gap-2 justify-end">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setShowForgotPassword(false)}
+                                disabled={isForgotPasswordPending}
+                            >
+                                Cancel
+                            </Button>
+                            <Button type="submit" disabled={isForgotPasswordPending}>
+                                {isForgotPasswordPending ? 'Sending...' : 'Send reset link'}
+                            </Button>
+                        </div>
+                    </form>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     )
 }

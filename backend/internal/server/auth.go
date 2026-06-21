@@ -8,6 +8,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/twinspeak/backend/internal/auth"
+	"github.com/twinspeak/backend/internal/email"
 	"github.com/twinspeak/backend/internal/googleauth"
 )
 
@@ -25,6 +26,8 @@ func (r *RestApi) MountAuthRoutes(router fiber.Router) {
 	router.Post("/auth/logout", r.logout)
 	router.Get("/auth/google/sign-in", r.googleSignIn)
 	router.Post("/auth/google/callback", r.googleCallback)
+	router.Post("/auth/password-reset/request", r.requestPasswordReset)
+	router.Post("/auth/password-reset/confirm", r.confirmPasswordReset)
 }
 
 func (r *RestApi) signIn(c *fiber.Ctx) error {
@@ -80,8 +83,9 @@ func (r *RestApi) signUp(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, invalidRequestBody)
 	}
 
-	// userAgent := string(c.Context().UserAgent())
-	// ip, _ := netip.ParseAddr(c.IP())
+	if len(req.Password) < 6 {
+		return fiber.NewError(fiber.StatusBadRequest, "password must be at least 6 characters")
+	}
 
 	accessToken, refreshToken, err := r.users.SignUp(c.Context(), time.Now(), req.Email, req.Password)
 	if errors.Is(err, auth.ErrEmailAlreadyTaken) {
@@ -223,4 +227,56 @@ func getEmailUnverifiedCookie(unverified bool, expiresAt time.Time) *fiber.Cooki
 	cookie.Expires = expiresAt
 	cookie.Path = "/"
 	return cookie
+}
+
+func (r *RestApi) requestPasswordReset(c *fiber.Ctx) error {
+	type request struct {
+		Email string `json:"email"`
+	}
+
+	var req request
+	err := json.Unmarshal(c.Request().Body(), &req)
+	if err != nil {
+		log.Errorf("Error unmarshalling request body: %s", err.Error())
+		return fiber.NewError(fiber.StatusBadRequest, invalidRequestBody)
+	}
+
+	err = r.users.RequestPasswordReset(c.Context(), req.Email)
+	if errors.Is(err, email.ErrUserNotFound) {
+		return fiber.NewError(fiber.StatusNotFound, "user not found")
+	} else if err != nil {
+		log.Errorf("Error requesting password reset: %s", err.Error())
+		return fiber.NewError(fiber.StatusInternalServerError, internalServerError)
+	}
+
+	return c.SendStatus(fiber.StatusOK)
+}
+
+func (r *RestApi) confirmPasswordReset(c *fiber.Ctx) error {
+	type request struct {
+		Token    string `json:"token"`
+		Password string `json:"password"`
+	}
+
+	var req request
+	err := json.Unmarshal(c.Request().Body(), &req)
+	if err != nil {
+		log.Errorf("Error unmarshalling request body: %s", err.Error())
+		return fiber.NewError(fiber.StatusBadRequest, invalidRequestBody)
+	}
+
+	if len(req.Password) < 6 {
+		return fiber.NewError(fiber.StatusBadRequest, "password must be at least 6 characters")
+	}
+
+	err = r.users.ResetPassword(c.Context(), req.Token, req.Password)
+	if err != nil {
+		if errors.Is(err, email.ErrInvalidResetToken) {
+			return fiber.NewError(fiber.StatusBadRequest, "invalid or expired reset token")
+		}
+		log.Errorf("Error during password reset: %s", err.Error())
+		return fiber.NewError(fiber.StatusInternalServerError, internalServerError)
+	}
+
+	return c.SendStatus(fiber.StatusOK)
 }

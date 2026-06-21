@@ -48,6 +48,16 @@ create table email_verification_tokens (
 );
 create unique index idx_verification_token_hash on email_verification_tokens(token_hash);
 
+-- Table for password reset tokens
+create table password_reset_tokens (
+    id uuid primary key default uuidv7(),
+    user_id uuid not null references users(id) on delete cascade,
+    token_hash bytea not null unique,
+    created_at timestamptz(3) not null default now(),
+    expires_at timestamptz(3) not null
+);
+create unique index idx_password_reset_token_hash on password_reset_tokens(token_hash);
+
 -- Table for managing user subscriptions
 create table subscriptions (
     id uuid primary key default uuidv7(),

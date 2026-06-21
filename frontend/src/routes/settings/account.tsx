@@ -2,13 +2,14 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import * as AccountApi from '@/api/account'
 import * as AuthApi from '@/api/auth'
 import { useAtom } from 'jotai'
-import { Calendar, LogOut, Zap } from 'lucide-react'
+import { Calendar, LogOut, Zap, Mail } from 'lucide-react'
 import { AnimatePresence } from 'motion/react'
 import ErrorPage from '@/components/Error'
 import { Button } from '@/components/ui/button'
 import Loader from '@/components/ui/loader'
 import SectionCard from '@/components/SectionCard'
-import { atomWithQuery } from 'jotai-tanstack-query'
+import { atomWithQuery, atomWithMutation } from 'jotai-tanstack-query'
+import { toast } from 'sonner'
 
 export const Route = createFileRoute('/settings/account')({
     component: Account,
@@ -17,6 +18,11 @@ export const Route = createFileRoute('/settings/account')({
 export const accountAtom = atomWithQuery(() => ({
     queryKey: ['account'],
     queryFn: async () => await Promise.all([AccountApi.getAccount(), AccountApi.getCredits()]),
+}))
+
+const passwordResetAtom = atomWithMutation(() => ({
+    mutationKey: ['password-reset-settings'],
+    mutationFn: AuthApi.requestPasswordReset,
 }))
 
 function CreditGrantCard({ grant }: { grant: AccountApi.CreditGrant }) {
@@ -88,10 +94,21 @@ function getInitials(email: string): string {
 function Account() {
     const navigate = useNavigate()
     const [{ data, isPending, isError, refetch }] = useAtom(accountAtom)
+    const [{ mutateAsync: sendPasswordReset, isPending: isResetting }] =
+        useAtom(passwordResetAtom)
 
     async function signOut() {
         await AuthApi.signOut()
         navigate({ to: '/auth' })
+    }
+
+    function handleSendPasswordReset(email: string) {
+        toast.promise(() => sendPasswordReset(email), {
+            loading: 'Sending reset email...',
+            success: `Password reset email sent to ${email}`,
+            error: 'Failed to send reset email. Please try again.',
+            position: 'top-right',
+        })
     }
 
     return (
@@ -130,7 +147,19 @@ function Account() {
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="px-4 pb-4 border-t border-border/50 pt-3">
+                                    <div className="px-4 pb-2 border-t border-border/50 pt-3">
+                                        <Button
+                                            variant="outline"
+                                            size="lg"
+                                            onClick={() => handleSendPasswordReset(account.email)}
+                                            disabled={isResetting}
+                                            className="w-full mb-2"
+                                        >
+                                            <Mail className="w-3.5 h-3.5" />
+                                            Reset password
+                                        </Button>
+                                    </div>
+                                    <div className="px-4 pb-4">
                                         <Button
                                             variant="outline"
                                             size="lg"

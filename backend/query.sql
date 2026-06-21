@@ -178,3 +178,21 @@ delete from email_verification_tokens where token_hash = $1;
 
 -- name: DeleteExpiredVerificationTokens :exec
 delete from email_verification_tokens where expires_at <= now();
+
+-- name: CreatePasswordResetToken :one
+insert into password_reset_tokens (user_id, token_hash, expires_at)
+values ($1, $2, $3)
+returning id;
+
+-- name: GetPasswordResetToken :one
+select * from password_reset_tokens 
+where token_hash = $1 and expires_at > now();
+
+-- name: DeletePasswordResetToken :exec
+delete from password_reset_tokens where token_hash = $1;
+
+-- name: DeleteExpiredPasswordResetTokens :exec
+delete from password_reset_tokens where expires_at <= now();
+
+-- name: UpdateUserPassword :exec
+update users set password_hash = $2 where id = $1;

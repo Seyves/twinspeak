@@ -301,6 +301,63 @@ func (s *Service) Logout(ctx context.Context, refreshToken string) error {
 	return s.auth.RevokeSession(ctx, s.queries, refreshToken)
 }
 
+func (s *Service) RequestPasswordReset(ctx context.Context, email string) error {
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("cannot start db transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := s.queries.WithTx(tx)
+
+	err = s.email.SendPasswordResetEmail(ctx, qtx, email)
+	if err != nil {
+		return fmt.Errorf("cannot send password reset email: %w", err)
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return fmt.Errorf("cannot commit db transaction: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Service) ResetPassword(ctx context.Context, token string, newPassword string) error {
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("cannot start db transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := s.queries.WithTx(tx)
+
+	// Validate token and get userId
+	userId, err := s.email.ValidatePasswordResetToken(ctx, qtx, token)
+	if err != nil {
+		return fmt.Errorf("cannot validate reset token: %w", err)
+	}
+
+	// Update password
+	err = s.auth.UpdatePassword(ctx, qtx, userId, newPassword)
+	if err != nil {
+		return fmt.Errorf("cannot update password: %w", err)
+	}
+
+	// Delete token (one-time use)
+	err = s.email.DeletePasswordResetToken(ctx, qtx, token)
+	if err != nil {
+		return fmt.Errorf("cannot delete reset token: %w", err)
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return fmt.Errorf("cannot commit db transaction: %w", err)
+	}
+
+	return nil
+}
+
 func (s *Service) GetQueries() *db.Queries {
 	return s.queries
 }

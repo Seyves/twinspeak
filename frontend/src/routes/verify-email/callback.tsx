@@ -32,10 +32,6 @@ function VerifyEmailCallback() {
         mutate(token)
     }, [token])
 
-    useEffect(() => {
-        if (isError) setTimeout(navigate, 5000)
-    }, [isError])
-
     if (isIdle || isPending) return <Loader />
 
     if (!token || isError) {
@@ -51,10 +47,15 @@ function VerifyEmailCallback() {
                             <h1 className="text-xl sm:text-2xl font-semibold text-foreground mb-2">
                                 Invalid or expired verification link
                             </h1>
-                            <p className="text-muted-foreground text-sm sm:text-base">
-                                Please request a new verification email. You will be redirected in 5
-                                seconds...
+                            <p className="text-muted-foreground text-sm sm:text-base mb-4">
+                                Please request a new verification email.
                             </p>
+                            <Button
+                                onClick={continueToApp}
+                                className="w-full bg-linear-to-r from-primary to-accent hover:opacity-90"
+                            >
+                                Continue to app
+                            </Button>
                         </div>
                     </div>
                 </div>
@@ -81,7 +82,7 @@ function VerifyEmailCallback() {
                     </div>
 
                     <Button
-                        onClick={navigate}
+                        onClick={continueToApp}
                         className="w-full bg-linear-to-r from-primary to-accent hover:opacity-90"
                     >
                         Continue to app
@@ -93,6 +94,6 @@ function VerifyEmailCallback() {
 }
 
 // To reset Referrer header
-function navigate() {
+function continueToApp() {
     window.location.href = '/'
 }

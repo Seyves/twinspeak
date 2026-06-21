@@ -124,6 +124,21 @@ func (m *Module) ValidatePassword(ctx context.Context, tx *db.Queries, email str
 	return user.ID, nil
 }
 
+func (m *Module) UpdatePassword(ctx context.Context, tx *db.Queries, userId uuid.UUID, newPassword string) error {
+	salted, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("cannot hash the password: %w", err)
+	}
+	err = tx.UpdateUserPassword(ctx, db.UpdateUserPasswordParams{
+		ID:           userId,
+		PasswordHash: salted,
+	})
+	if err != nil {
+		return fmt.Errorf("cannot update user password in db: %w", err)
+	}
+	return nil
+}
+
 func (m *Module) ValidateAccessToken(ctx context.Context, now time.Time, accessToken string) (*jwt.Token, uuid.UUID, error) {
 	token, err := jwt.Parse(
 		accessToken,
