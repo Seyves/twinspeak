@@ -1,8 +1,10 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"net/netip"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -43,10 +45,13 @@ func (r *RestApi) signIn(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, invalidRequestBody)
 	}
 
-	// userAgent := string(c.Context().UserAgent())
-	// ip, _ := netip.ParseAddr(c.IP())
+	userAgent := string(c.Context().UserAgent())
+	ctx := context.WithValue(c.Context(), "userAgent", &userAgent)
 
-	accessToken, refreshToken, userId, err := r.users.SignIn(c.Context(), time.Now(), req.Email, req.Password)
+	ip, _ := netip.ParseAddr(c.IP())
+	ctx = context.WithValue(ctx, "ip", &ip)
+
+	accessToken, refreshToken, userId, err := r.users.SignIn(ctx, time.Now(), req.Email, req.Password)
 	if err != nil {
 		if errors.Is(err, auth.ErrInvalidCredentials) {
 			return fiber.NewError(fiber.StatusUnauthorized, "invalid credentials")
@@ -57,7 +62,7 @@ func (r *RestApi) signIn(c *fiber.Ctx) error {
 	}
 
 	// Get user to check email verification status
-	user, err := r.users.GetCurrentUser(c.Context(), userId)
+	user, err := r.users.GetCurrentUser(ctx, userId)
 	if err != nil {
 		log.Errorf("Error getting user: %s", err.Error())
 		return fiber.NewError(fiber.StatusInternalServerError, internalServerError)
@@ -87,7 +92,13 @@ func (r *RestApi) signUp(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "password must be at least 6 characters")
 	}
 
-	accessToken, refreshToken, err := r.users.SignUp(c.Context(), time.Now(), req.Email, req.Password)
+	userAgent := string(c.Context().UserAgent())
+	ctx := context.WithValue(c.Context(), "userAgent", &userAgent)
+
+	ip, _ := netip.ParseAddr(c.IP())
+	ctx = context.WithValue(ctx, "ip", &ip)
+
+	accessToken, refreshToken, err := r.users.SignUp(ctx, time.Now(), req.Email, req.Password)
 	if errors.Is(err, auth.ErrEmailAlreadyTaken) {
 		return fiber.NewError(fiber.StatusConflict, "email already taken")
 	} else if err != nil {
