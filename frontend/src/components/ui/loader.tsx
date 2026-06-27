@@ -13,7 +13,7 @@ export default function Loader() {
                 <div className="col-start-1 row-start-1 bg-accent [clip-path:polygon(0_0,50%_50%,0_100%)] animate-[l11_2s_infinite]" />
                 <div
                     className="col-start-1 row-start-1 bg-primary [clip-path:polygon(0_0,50%_50%,0_100%)] animate-[l11_2s_infinite] [animation-delay:-1.5s]"
-                    style={{ '--s': '90deg' }}
+                    style={{ '--s': '90deg' } as React.CSSProperties}
                 />
             </div>
         </motion.div>

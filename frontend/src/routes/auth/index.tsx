@@ -161,7 +161,6 @@ function Auth() {
                             e.preventDefault()
                             form.handleSubmit()
                         }}
-                        className="space-y-3 sm:space-y-4"
                         noValidate
                     >
                         <form.Field
@@ -177,13 +176,10 @@ function Auth() {
                                 const isInvalid =
                                     field.state.meta.isTouched && !field.state.meta.isValid
                                 return (
-                                    <Field
-                                        data-invalid={isInvalid}
-                                        className="space-y-1 sm:space-y-2"
-                                    >
+                                    <Field data-invalid={isInvalid} className="mb-3 sm:mb-4">
                                         <FieldLabel
                                             htmlFor={field.name}
-                                            className="text-xs sm:text-sm"
+                                            className="mb-1 sm:mb-2 text-xs sm:text-sm"
                                         >
                                             Email
                                         </FieldLabel>
@@ -222,13 +218,10 @@ function Auth() {
                                 const isInvalid =
                                     field.state.meta.isTouched && !field.state.meta.isValid
                                 return (
-                                    <Field
-                                        data-invalid={isInvalid}
-                                        className="space-y-1 sm:space-y-2"
-                                    >
+                                    <Field data-invalid={isInvalid}>
                                         <FieldLabel
                                             htmlFor={field.name}
-                                            className="text-xs sm:text-sm"
+                                            className="mb-1 sm:mb-2 text-xs sm:text-sm"
                                         >
                                             Password
                                         </FieldLabel>
@@ -255,7 +248,7 @@ function Auth() {
                         ></form.Field>
 
                         {mode === 'signin' && (
-                            <div className="text-right">
+                            <div className="mbe-0 text-right">
                                 <Button
                                     type="button"
                                     onClick={() => setShowForgotPassword(true)}
@@ -330,7 +323,7 @@ function Auth() {
                         <Button
                             type="submit"
                             disabled={isPending}
-                            className="h-10 w-full mt-4 sm:mt-6 bg-linear-to-r from-primary to-accent hover:opacity-90 transform hover:scale-105 active:scale-95 shadow-lg"
+                            className="h-10 w-full mt-2 sm:mt-4 bg-linear-to-r from-primary to-accent hover:opacity-90 transform hover:scale-105 active:scale-95 shadow-lg"
                         >
                             {(function () {
                                 if (isPending) return 'Loading...'
@@ -454,6 +447,7 @@ function Auth() {
                                             onBlur={field.handleBlur}
                                             onChange={(e) => field.handleChange(e.target.value)}
                                             aria-invalid={isInvalid}
+                                            className="text-sm"
                                             placeholder="you@example.com"
                                             disabled={isForgotPasswordPending}
                                         />

@@ -34,17 +34,17 @@ function CreditGrantCard({ grant }: { grant: AccountApi.CreditGrant }) {
             <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                     <div
-                        className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                        className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
                             isMonthly ? 'bg-blue-500/15' : 'bg-violet-500/15'
                         }`}
                     >
                         {isMonthly ? (
-                            <Calendar className="w-5 h-5 text-blue-400" />
+                            <Calendar className="w-4 h-4 text-blue-400" />
                         ) : (
-                            <Zap className="w-5 h-5 text-violet-400" />
+                            <Zap className="w-4 h-4 text-violet-400" />
                         )}
                     </div>
-                    <span className="text font-medium">{isMonthly ? 'Monthly' : 'Top-up'}</span>
+                    <span className="text-sm font-medium">{isMonthly ? 'Monthly' : 'Top-up'}</span>
                 </div>
                 {grant.expiresAt && (
                     <span className="text-sm text-muted-foreground shrink-0">
@@ -94,8 +94,7 @@ function getInitials(email: string): string {
 function Account() {
     const navigate = useNavigate()
     const [{ data, isPending, isError, refetch }] = useAtom(accountAtom)
-    const [{ mutateAsync: sendPasswordReset, isPending: isResetting }] =
-        useAtom(passwordResetAtom)
+    const [{ mutateAsync: sendPasswordReset, isPending: isResetting }] = useAtom(passwordResetAtom)
 
     async function signOut() {
         await AuthApi.signOut()
@@ -147,24 +146,20 @@ function Account() {
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="px-4 pb-2 border-t border-border/50 pt-3">
+                                    <div className="px-4 py-2 sm:py-4 gap-2 flex">
                                         <Button
                                             variant="outline"
-                                            size="lg"
                                             onClick={() => handleSendPasswordReset(account.email)}
                                             disabled={isResetting}
-                                            className="w-full mb-2"
+                                            className="basis-1/2 mb-2"
                                         >
                                             <Mail className="w-3.5 h-3.5" />
                                             Reset password
                                         </Button>
-                                    </div>
-                                    <div className="px-4 pb-4">
                                         <Button
                                             variant="outline"
-                                            size="lg"
                                             onClick={signOut}
-                                            className="w-full text-destructive border-destructive/20 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/40"
+                                            className="basis-1/2 text-destructive border-destructive/20 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/40"
                                         >
                                             <LogOut className="w-3.5 h-3.5" />
                                             Sign out

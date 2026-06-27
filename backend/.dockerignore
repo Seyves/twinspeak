@@ -1,0 +1,45 @@
+# Development files
+.air.toml
+tmp/
+*.log
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test files
+*_test.go
+testdata/
+
+# Documentation
+*.md
+README*
+
+# Config (should be mounted)
+config.yaml
+config-*.yaml
+!config-example.yaml
+
+# Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+bin/
+dist/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile
+Dockerfile.*
+docker-compose*.yml
+.dockerignore

@@ -128,6 +128,11 @@ export function useRecorder({
             }
 
             ws.onerror = (event) => {
+                            setRecordingMessage((prev) => ({
+                                ...prev,
+                                status: 'error',
+                            }))
+                            stopRecording()
                 console.error('WebSocket error:', event)
             }
 

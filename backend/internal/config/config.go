@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/viper"
 	"github.com/twinspeak/backend/internal/googleauth"
@@ -29,14 +30,44 @@ type Config struct {
 }
 
 func Parse(path string, cfg any) error {
-	viper.SetConfigFile(path)
-	if err := viper.ReadInConfig(); err != nil {
-		return err
+	viper.SetEnvPrefix("TWINSPEAK")
+	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_", ".", "_"))
+	viper.AutomaticEnv()
+
+	bindEnvVars()
+
+	if path != "" {
+		if _, err := os.Stat(path); err == nil {
+			viper.SetConfigFile(path)
+			if err := viper.ReadInConfig(); err != nil {
+				return fmt.Errorf("error reading config file: %s", err.Error())
+			}
+		}
 	}
+
 	if err := viper.Unmarshal(cfg); err != nil {
 		return fmt.Errorf("error unmarshalling config: %s", err.Error())
 	}
+
 	return nil
+}
+
+func bindEnvVars() {
+	viper.BindEnv("host", "TWINSPEAK_HOST")
+	viper.BindEnv("public-url", "TWINSPEAK_PUBLIC_URL")
+	viper.BindEnv("hmac-secret", "TWINSPEAK_HMAC_SECRET")
+	viper.BindEnv("db-url", "TWINSPEAK_DB_URL")
+	viper.BindEnv("pipeline", "TWINSPEAK_PIPELINE")
+	viper.BindEnv("gladia-key", "TWINSPEAK_GLADIA_KEY")
+	viper.BindEnv("faster-whisper-url", "TWINSPEAK_FASTER_WHISPER_URL")
+	viper.BindEnv("libretranslate-url", "TWINSPEAK_LIBRETRANSLATE_URL")
+
+	viper.BindEnv("google.client-id", "TWINSPEAK_GOOGLE_CLIENT_ID")
+	viper.BindEnv("google.client-secret", "TWINSPEAK_GOOGLE_CLIENT_SECRET")
+	viper.BindEnv("google.redirect-url", "TWINSPEAK_GOOGLE_REDIRECT_URL")
+
+	viper.BindEnv("resend.api-key", "TWINSPEAK_RESEND_API_KEY")
+	viper.BindEnv("resend.from-email", "TWINSPEAK_RESEND_FROM_EMAIL")
 }
 
 func ResolveConfigPath(flag string) string {

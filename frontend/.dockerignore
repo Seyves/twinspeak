@@ -1,0 +1,58 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+.vite
+
+# Build outputs
+.output/
+dist/
+build/
+
+# Development
+.tanstack/
+.vscode/
+.env
+.env.*
+!.env.example
+
+# Testing
+coverage/
+.vitest/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.idea/
+*.swp
+*.swo
+.vscode/
+
+# Certificates (dev only)
+cert.pem
+key.pem
+
+# Docker
+Dockerfile
+Dockerfile.*
+docker-compose*.yml
+.dockerignore
+
+# Misc
+*.md
+README*
+.prettierrc*
+.cta.json
+nixpacks.toml

@@ -20,13 +20,13 @@ import (
 )
 
 func main() {
-	cfgPath := flag.String("c", "/etc/twinspeak/config.yaml", "Path to configuration file")
+	cfgPath := flag.String("c", "", "Path to configuration file (optional, falls back to env vars)")
 	flag.Parse()
 
 	var cfg config.Config
 	err := config.Parse(*cfgPath, &cfg)
 	if err != nil {
-		log.Errorf("Parsing config file: %s", err.Error())
+		log.Errorf("Parsing config: %s", err.Error())
 		return
 	}
 

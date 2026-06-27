@@ -2,13 +2,13 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeftRight } from 'lucide-react'
 import LangCombobox from './LangCombobox'
 import { OverflowMenu } from './OverflowMenu'
-import * as CommonApi from '@/api/common'
+import * as AccountApi from '@/api/account'
 import type { MutateFunction } from 'jotai-tanstack-query'
 
 export default function Languages(props: {
     languages: Record<string, string>
-    prefs: CommonApi.Preferences
-    setPrefs: MutateFunction<CommonApi.Preferences, unknown, CommonApi.Preferences, void>
+    prefs: AccountApi.Preferences
+    setPrefs: MutateFunction<AccountApi.Preferences, unknown, AccountApi.Preferences, void>
 }) {
     function swagLanguages() {
         props.setPrefs({

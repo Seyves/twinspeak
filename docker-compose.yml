@@ -1,99 +1,118 @@
-version: '3.9'
 services:
-  # whisper:
-  #   image: onerahmet/openai-whisper-asr-webservice:latest-gpu
-  #   container_name: twinspeak-whisper
-  #   environment:
-  #     - ASR_MODEL=medium
-  #     - ASR_ENGINE=faster_whisper
-  #   deploy:
-  #     resources:
-  #       reservations:
-  #         devices:
-  #           - driver: nvidia
-  #             count: all
-  #             capabilities: [gpu]
-  #   ports:
-  #     - "9000:9000"
-  #   networks:
-  #     - twinspeak
-  #
-  # libretranslate:
-  #   container_name: twinspeak-libretranslate
-  #   image: libretranslate/libretranslate:latest-cuda
-  #   ports:
-  #     - "5000:5000"
-  #   restart: unless-stopped
-  #   command: --disable-web-ui
-  #   environment:
-  #    - LT_UPDATE_MODELS=True
-  #    - LT_DEBUG=True
-  #    - PUID=root
-  #   volumes:
-  #    - libretranslate:/app/db
-  #    - libretranslate:/root/.local:rw
-  #   deploy:
-  #     resources:
-  #       reservations:
-  #         devices:
-  #           - driver: nvidia
-  #             count: 1
-  #             capabilities: [gpu]
-  #   tty: true
-  #   networks:
-  #     - twinspeak
-
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    image: twinspeak-backend:latest
     container_name: twinspeak-backend
-    ports:
-      - "8080:8080"
+    restart: unless-stopped
     volumes:
-      - ./backend:/app
-      - /app/tmp
-    networks:
-      - twinspeak
-    command: air -c .air.toml 
-
-  frontend:
-    image: node:22-alpine
-    container_name: twinspeak-frontend
-    working_dir: /app
-    environment:
-      - NODE_ENV=development
-    ports:
-      - "4321:4321"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
+      # Mount config file (must be created from config-example.yaml)
+      - ./backend/config.yaml:/config/config.yaml:ro
     networks:
       - twinspeak
     depends_on:
-      - backend
-    command: sh -c "corepack enable && corepack prepare pnpm@10.28.0 --activate && pnpm install && pnpm dev --host"
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8080/api/v1 2>&1 | grep -qE '(200 OK|404 Not Found|401 Unauthorized)'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=64m
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NODE_ENV: production
+        VITE_BACKEND_HOST: backend:8080
+    image: twinspeak-frontend:latest
+    container_name: twinspeak-frontend
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - VITE_BACKEND_HOST=backend:8080
+      - PORT=4321
+    networks:
+      - twinspeak
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:4321"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    security_opt:
+      - no-new-privileges:true
 
   db:
     image: postgres:18
     container_name: twinspeak-db
-    restart: always
+    restart: unless-stopped
     shm_size: 128mb
     environment:
       POSTGRES_PASSWORD: postgres
       POSTGRES_USER: postgres
       POSTGRES_DB: twinspeak
     ports:
-      - "5432:5432"
+      # Bind to localhost only for security
+      - "127.0.0.1:5432:5432"
     networks:
       - twinspeak
     volumes:
+      # Persistent data (PostgreSQL 18+ uses /var/lib/postgresql)
       - postgresdata:/var/lib/postgresql
+      # Auto-initialize schema on first run
+      - ./backend/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d twinspeak"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    image: twinspeak-nginx:latest
+    container_name: twinspeak-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    networks:
+      - twinspeak
+    depends_on:
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    environment:
+      - BACKEND_HOST=backend:8080
+      - FRONTEND_HOST=frontend:4321
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
 
 networks:
   twinspeak:
     driver: bridge
 
 volumes: 
-  # libretranslate: 
   postgresdata:

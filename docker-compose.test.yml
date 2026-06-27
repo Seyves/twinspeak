@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   db:
     image: postgres:18
@@ -14,7 +12,9 @@ services:
     networks:
       - twinspeak-test
     volumes:
+      # Persistent data (PostgreSQL 18+ uses /var/lib/postgresql)
       - postgresdata:/var/lib/postgresql
+      # Auto-initialize schema
       - ./backend/schema.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d twinspeak"]
