@@ -159,9 +159,9 @@ function Account() {
                                 )}
                             </SectionCard>
                             <SectionCard label="Appearance">
-                                <div className="space-y-5">
+                                <div className="space-y-4">
                                     <div className="flex items-center justify-between gap-4">
-                                        <label className="text font-medium">Message size</label>
+                                        <label className="text-sm font-medium">Message size</label>
                                         <Select
                                             value={prefs.data.chatMessageSize}
                                             onValueChange={(v) =>
@@ -171,26 +171,17 @@ function Account() {
                                                 })
                                             }
                                         >
-                                            <SelectTrigger className="w-44 text-base">
+                                            <SelectTrigger className="w-44">
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem
-                                                    className="text-base"
-                                                    value={chatMessageSize.sm}
-                                                >
+                                                <SelectItem value={chatMessageSize.sm}>
                                                     Small
                                                 </SelectItem>
-                                                <SelectItem
-                                                    className="text-base"
-                                                    value={chatMessageSize.md}
-                                                >
+                                                <SelectItem value={chatMessageSize.md}>
                                                     Medium
                                                 </SelectItem>
-                                                <SelectItem
-                                                    className="text-base"
-                                                    value={chatMessageSize.lg}
-                                                >
+                                                <SelectItem value={chatMessageSize.lg}>
                                                     Large
                                                 </SelectItem>
                                             </SelectContent>
@@ -198,7 +189,7 @@ function Account() {
                                     </div>
 
                                     <div className="flex items-center justify-between gap-4">
-                                        <label className="font-medium">Theme</label>
+                                        <label className="text-sm font-medium">Theme</label>
                                         <Select
                                             value={prefs.data.theme}
                                             onValueChange={(v) => {
@@ -207,26 +198,13 @@ function Account() {
                                                 setPrefs({ ...prefs.data, theme })
                                             }}
                                         >
-                                            <SelectTrigger className="w-44 text-base">
+                                            <SelectTrigger className="w-44">
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem
-                                                    className="text-base"
-                                                    value={themes.dark}
-                                                >
-                                                    Dark
-                                                </SelectItem>
-                                                <SelectItem
-                                                    className="text-base"
-                                                    value={themes.light}
-                                                >
-                                                    Light
-                                                </SelectItem>
-                                                <SelectItem
-                                                    className="text-base"
-                                                    value={themes.system}
-                                                >
+                                                <SelectItem value={themes.dark}>Dark</SelectItem>
+                                                <SelectItem value={themes.light}>Light</SelectItem>
+                                                <SelectItem value={themes.system}>
                                                     System
                                                 </SelectItem>
                                             </SelectContent>
