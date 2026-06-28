@@ -19,6 +19,7 @@ import {
     AlertDialogTitle,
     AlertDialogDescription,
 } from '@/components/ui/alert-dialog'
+import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/auth/')({
     component: Auth,
@@ -218,7 +219,10 @@ function Auth() {
                                 const isInvalid =
                                     field.state.meta.isTouched && !field.state.meta.isValid
                                 return (
-                                    <Field data-invalid={isInvalid}>
+                                    <Field
+                                        data-invalid={isInvalid}
+                                        className={cn(mode === 'signup' && 'mb-3 sm:mb-4')}
+                                    >
                                         <FieldLabel
                                             htmlFor={field.name}
                                             className="mb-1 sm:mb-2 text-xs sm:text-sm"
