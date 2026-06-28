@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <defs>
+    <linearGradient id="waveGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#4F46E5;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#6366F1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#818CF8;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Sound wave bars with symmetric heights -->
+  <rect x="4" y="14" width="3" height="4" rx="1.5" fill="url(#waveGradient)" />
+  <rect x="8" y="10" width="3" height="12" rx="1.5" fill="url(#waveGradient)" />
+  <rect x="12" y="6" width="3" height="20" rx="1.5" fill="url(#waveGradient)" />
+  <rect x="16" y="4" width="3" height="24" rx="1.5" fill="url(#waveGradient)" />
+  <rect x="20" y="6" width="3" height="20" rx="1.5" fill="url(#waveGradient)" />
+  <rect x="24" y="10" width="3" height="12" rx="1.5" fill="url(#waveGradient)" />
+  <rect x="28" y="14" width="3" height="4" rx="1.5" fill="url(#waveGradient)" />
+</svg>
