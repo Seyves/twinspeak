@@ -16,7 +16,7 @@ import Loader from '@/components/ui/loader'
 import { AnimatePresence } from 'motion/react'
 import { atomWithQuery, queryClientAtom } from 'jotai-tanstack-query'
 import { localThemeAtom } from '@/components/theme-provider'
-import { preferencesAtom, updatePreferencesAtom } from './settings/preferences'
+import { preferencesAtom, updatePreferencesAtom } from './settings/account'
 import * as AccountApi from '@/api/account'
 import * as CommonApi from '@/api/common'
 

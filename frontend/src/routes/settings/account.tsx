@@ -19,6 +19,7 @@ import { atomWithQuery, atomWithMutation, queryClientAtom } from 'jotai-tanstack
 import { toast } from 'sonner'
 import { localThemeAtom } from '@/components/theme-provider'
 import { chatMessageSize, themes, type ChatMessageSize, type Theme } from '@/definitions/chat'
+import { useEffect } from 'react'
 
 export const Route = createFileRoute('/settings/account')({
     component: Account,
@@ -26,7 +27,7 @@ export const Route = createFileRoute('/settings/account')({
 
 export const accountAtom = atomWithQuery(() => ({
     queryKey: ['account'],
-    queryFn: async () => await Promise.all([AccountApi.getAccount(), AccountApi.getCredits()]),
+    queryFn: async () => await Promise.all([AccountApi.getMe(), AccountApi.getCredits()]),
 }))
 
 const passwordResetAtom = atomWithMutation(() => ({
@@ -58,6 +59,10 @@ function Account() {
     const [prefs] = useAtom(preferencesAtom)
     const [{ mutate: setPrefs }] = useAtom(updatePreferencesAtom)
     const [{ mutateAsync: sendPasswordReset, isPending: isResetting }] = useAtom(passwordResetAtom)
+
+    useEffect(() => {
+        if (prefs.isSuccess) setLocalTheme(prefs.data.theme)
+    }, [prefs.isSuccess])
 
     async function signOut() {
         await AuthApi.signOut()

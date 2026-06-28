@@ -23,7 +23,7 @@ export type Preferences = {
     outLang: string
 }
 
-export async function getAccount(): Promise<UserInfo> {
+export async function getMe(): Promise<UserInfo> {
     const response = await httpClient.get('/account')
     return response.json()
 }

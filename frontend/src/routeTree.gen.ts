@@ -16,7 +16,6 @@ import { Route as VerifyEmailIndexRouteImport } from './routes/verify-email/inde
 import { Route as SettingsIndexRouteImport } from './routes/settings/index'
 import { Route as AuthIndexRouteImport } from './routes/auth/index'
 import { Route as VerifyEmailCallbackRouteImport } from './routes/verify-email/callback'
-import { Route as SettingsPreferencesRouteImport } from './routes/settings/preferences'
 import { Route as SettingsAccountRouteImport } from './routes/settings/account'
 import { Route as AuthRecoveryRouteImport } from './routes/auth/recovery'
 import { Route as AuthGoogleCallbackRouteImport } from './routes/auth/google-callback'
@@ -56,11 +55,6 @@ const VerifyEmailCallbackRoute = VerifyEmailCallbackRouteImport.update({
   path: '/callback',
   getParentRoute: () => VerifyEmailRouteRoute,
 } as any)
-const SettingsPreferencesRoute = SettingsPreferencesRouteImport.update({
-  id: '/preferences',
-  path: '/preferences',
-  getParentRoute: () => SettingsRouteRoute,
-} as any)
 const SettingsAccountRoute = SettingsAccountRouteImport.update({
   id: '/account',
   path: '/account',
@@ -84,7 +78,6 @@ export interface FileRoutesByFullPath {
   '/auth/google-callback': typeof AuthGoogleCallbackRoute
   '/auth/recovery': typeof AuthRecoveryRoute
   '/settings/account': typeof SettingsAccountRoute
-  '/settings/preferences': typeof SettingsPreferencesRoute
   '/verify-email/callback': typeof VerifyEmailCallbackRoute
   '/auth/': typeof AuthIndexRoute
   '/settings/': typeof SettingsIndexRoute
@@ -95,7 +88,6 @@ export interface FileRoutesByTo {
   '/auth/google-callback': typeof AuthGoogleCallbackRoute
   '/auth/recovery': typeof AuthRecoveryRoute
   '/settings/account': typeof SettingsAccountRoute
-  '/settings/preferences': typeof SettingsPreferencesRoute
   '/verify-email/callback': typeof VerifyEmailCallbackRoute
   '/auth': typeof AuthIndexRoute
   '/settings': typeof SettingsIndexRoute
@@ -109,7 +101,6 @@ export interface FileRoutesById {
   '/auth/google-callback': typeof AuthGoogleCallbackRoute
   '/auth/recovery': typeof AuthRecoveryRoute
   '/settings/account': typeof SettingsAccountRoute
-  '/settings/preferences': typeof SettingsPreferencesRoute
   '/verify-email/callback': typeof VerifyEmailCallbackRoute
   '/auth/': typeof AuthIndexRoute
   '/settings/': typeof SettingsIndexRoute
@@ -124,7 +115,6 @@ export interface FileRouteTypes {
     | '/auth/google-callback'
     | '/auth/recovery'
     | '/settings/account'
-    | '/settings/preferences'
     | '/verify-email/callback'
     | '/auth/'
     | '/settings/'
@@ -135,7 +125,6 @@ export interface FileRouteTypes {
     | '/auth/google-callback'
     | '/auth/recovery'
     | '/settings/account'
-    | '/settings/preferences'
     | '/verify-email/callback'
     | '/auth'
     | '/settings'
@@ -148,7 +137,6 @@ export interface FileRouteTypes {
     | '/auth/google-callback'
     | '/auth/recovery'
     | '/settings/account'
-    | '/settings/preferences'
     | '/verify-email/callback'
     | '/auth/'
     | '/settings/'
@@ -215,13 +203,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VerifyEmailCallbackRouteImport
       parentRoute: typeof VerifyEmailRouteRoute
     }
-    '/settings/preferences': {
-      id: '/settings/preferences'
-      path: '/preferences'
-      fullPath: '/settings/preferences'
-      preLoaderRoute: typeof SettingsPreferencesRouteImport
-      parentRoute: typeof SettingsRouteRoute
-    }
     '/settings/account': {
       id: '/settings/account'
       path: '/account'
@@ -248,13 +229,11 @@ declare module '@tanstack/react-router' {
 
 interface SettingsRouteRouteChildren {
   SettingsAccountRoute: typeof SettingsAccountRoute
-  SettingsPreferencesRoute: typeof SettingsPreferencesRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
 }
 
 const SettingsRouteRouteChildren: SettingsRouteRouteChildren = {
   SettingsAccountRoute: SettingsAccountRoute,
-  SettingsPreferencesRoute: SettingsPreferencesRoute,
   SettingsIndexRoute: SettingsIndexRoute,
 }
 
