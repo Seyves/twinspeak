@@ -1,4 +1,4 @@
-package users
+package service
 
 import (
 	"context"
@@ -197,7 +197,7 @@ func (s *Service) BuyTopup(ctx context.Context, now time.Time, userId uuid.UUID,
 	return nil
 }
 
-func (s *Service) RenewSubscriptionsWorker(ctx context.Context, now time.Time) error {
+func (s *Service) RenewSubscriptionsRoutine(ctx context.Context, now time.Time) error {
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("cannot start db transaction: %w", err)

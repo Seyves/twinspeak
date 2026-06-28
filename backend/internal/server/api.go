@@ -1,6 +1,8 @@
 package server
 
 import (
+	"context"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
@@ -8,8 +10,8 @@ import (
 	"github.com/twinspeak/backend/internal/db"
 	"github.com/twinspeak/backend/internal/email"
 	"github.com/twinspeak/backend/internal/metrics"
+	"github.com/twinspeak/backend/internal/service"
 	"github.com/twinspeak/backend/internal/speechpipeline"
-	"github.com/twinspeak/backend/internal/users"
 )
 
 const (
@@ -21,7 +23,7 @@ type RestApi struct {
 	host     string
 	fiber    *fiber.App
 	pipeline speechpipeline.Pipeline
-	users    *users.Service
+	service  *service.Service
 	email    *email.Module
 	db       *pgxpool.Pool
 	queries  *db.Queries
@@ -55,6 +57,10 @@ func (r *RestApi) Start() error {
 	return r.fiber.Listen(r.host)
 }
 
+func (r *RestApi) Shutdown(ctx context.Context) error {
+	return r.fiber.ShutdownWithContext(ctx)
+}
+
 func (r *RestApi) supportedLanguages(c *fiber.Ctx) error {
 	languages := r.pipeline.SupportedLanguages(c.Context())
 	return c.JSON(languages)
@@ -70,7 +76,7 @@ func NewRestApi(
 	host string,
 	pipeline speechpipeline.Pipeline,
 	metrics *metrics.Module,
-	users *users.Service,
+	service *service.Service,
 	emailModule *email.Module,
 	dbPool *pgxpool.Pool,
 	queries *db.Queries,
@@ -82,7 +88,7 @@ func NewRestApi(
 	return &RestApi{
 		host:     host,
 		fiber:    server,
-		users:    users,
+		service:  service,
 		pipeline: pipeline,
 		email:    emailModule,
 		db:       dbPool,

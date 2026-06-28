@@ -45,3 +45,7 @@ func (m *Module) SetHideMessagesTimestamp(ctx context.Context, tx *db.Queries, u
 	}
 	return nil
 }
+
+func New() *Module {
+	return &Module{}
+}

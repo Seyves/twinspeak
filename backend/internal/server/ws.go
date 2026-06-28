@@ -30,7 +30,7 @@ var expectedWSClosures = []int{
 
 func (r *RestApi) getWSTiket(c *fiber.Ctx) error {
 	userId := c.Locals("userId").(uuid.UUID)
-	ticket, err := r.users.GetWSTicket(c.Context(), time.Now(), userId)
+	ticket, err := r.service.GetWSTicket(c.Context(), time.Now(), userId)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, internalServerError)
 	}
@@ -78,7 +78,7 @@ func (r *RestApi) startSession(c *websocket.Conn) {
 
 	chatSide := db.ChatSide(chatSideRaw)
 
-	err := r.users.StartSpeech(ctx, start, userId)
+	err := r.service.StartSpeech(ctx, start, userId)
 	if err != nil {
 		var evt speechpipeline.Event
 		if errors.Is(err, billing.ErrInsufficientCredits) {
@@ -93,7 +93,7 @@ func (r *RestApi) startSession(c *websocket.Conn) {
 
 	defer func() {
 		now := time.Now()
-		err := r.users.EndSpeech(context.Background(), now, db.InsertSpeechParams{
+		err := r.service.EndSpeech(context.Background(), now, db.InsertSpeechParams{
 			UserID:        userId,
 			InLang:        inLang,
 			OutLang:       outLang,

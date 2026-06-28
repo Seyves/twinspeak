@@ -3,6 +3,10 @@ package main
 import (
 	"context"
 	"flag"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -14,9 +18,10 @@ import (
 	"github.com/twinspeak/backend/internal/googleauth"
 	"github.com/twinspeak/backend/internal/metrics"
 	"github.com/twinspeak/backend/internal/preferences"
+	"github.com/twinspeak/backend/internal/scheduler"
 	"github.com/twinspeak/backend/internal/server"
+	"github.com/twinspeak/backend/internal/service"
 	"github.com/twinspeak/backend/internal/speechpipeline"
-	"github.com/twinspeak/backend/internal/users"
 )
 
 func main() {
@@ -38,19 +43,19 @@ func main() {
 	defer pool.Close()
 	queries := db.New(pool)
 
-	authm := auth.New(cfg.HMACSecret)
-	googleauthm := googleauth.New(cfg.Google)
-	billing := billing.New()
+	authModule := auth.New(cfg.HMACSecret)
+	googleauthModule := googleauth.New(cfg.Google)
+	billingModule := billing.New()
 
-	emailm, err := email.New(cfg.Resend.ApiKey, cfg.Resend.FromEmail, cfg.PublicUrl)
+	emailModule, err := email.New(cfg.Resend.ApiKey, cfg.Resend.FromEmail, cfg.PublicUrl)
 	if err != nil {
 		log.Errorf("Creating email module: %s", err.Error())
 		return
 	}
 
-	metricss := metrics.New(pool, queries)
-	preferencesm := &preferences.Module{}
-	userss := users.New(pool, queries, authm, googleauthm, billing, emailm, preferencesm, metricss)
+	metricsModule := metrics.New(pool, queries)
+	preferencesModule := preferences.New()
+	mainService := service.New(pool, queries, authModule, googleauthModule, billingModule, emailModule, preferencesModule, metricsModule)
 
 	var p speechpipeline.Pipeline
 	switch cfg.Pipeline {
@@ -68,10 +73,46 @@ func main() {
 		}
 	}
 
-	api := server.NewRestApi(cfg.Host, p, metricss, userss, emailm, pool, queries)
-	err = api.Start()
-	if err != nil {
-		log.Errorf("Starting server: %s", err.Error())
-		return
+	sched := scheduler.New(mainService, cfg.SchedulerInterval)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sched.Start(ctx, true)
+	log.Infof("Subscription renewal scheduler started with interval: %s", cfg.SchedulerInterval)
+
+	api := server.NewRestApi(cfg.Host, p, metricsModule, mainService, emailModule, pool, queries)
+
+	serverErrors := make(chan error, 1)
+	go func() {
+		serverErrors <- api.Start()
+	}()
+
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
+
+	select {
+	case err := <-serverErrors:
+		log.Errorf("Server error: %s", err.Error())
+	case sig := <-signalChan:
+		log.Infof("Received signal %v, initiating graceful shutdown", sig)
 	}
+
+	log.Info("Shutting down gracefully...")
+
+	if err := sched.Stop(30 * time.Second); err != nil {
+		log.Warnf("Scheduler shutdown warning: %s", err.Error())
+	}
+
+	cancel()
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer shutdownCancel()
+
+	if err := api.Shutdown(shutdownCtx); err != nil {
+		log.Errorf("Server shutdown error: %s", err.Error())
+	}
+
+	pool.Close()
+
+	log.Info("Shutdown complete")
 }

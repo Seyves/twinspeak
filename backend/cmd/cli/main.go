@@ -17,12 +17,12 @@ import (
 	"github.com/twinspeak/backend/internal/googleauth"
 	"github.com/twinspeak/backend/internal/metrics"
 	"github.com/twinspeak/backend/internal/preferences"
-	"github.com/twinspeak/backend/internal/users"
+	"github.com/twinspeak/backend/internal/service"
 )
 
 type deps struct {
-	pool  *pgxpool.Pool
-	users *users.Service
+	pool    *pgxpool.Pool
+	service *service.Service
 }
 
 func initDeps(cfgPath string) (*deps, error) {
@@ -38,20 +38,20 @@ func initDeps(cfgPath string) (*deps, error) {
 	}
 
 	queries := db.New(pool)
-	authm := auth.New(cfg.HMACSecret)
-	googleauthm := googleauth.New(cfg.Google)
-	billingm := billing.New()
-	emailm, err := email.New(cfg.Resend.ApiKey, cfg.Resend.FromEmail, cfg.PublicUrl)
+	authModule := auth.New(cfg.HMACSecret)
+	googleauthModule := googleauth.New(cfg.Google)
+	billingModule := billing.New()
+	emailModule, err := email.New(cfg.Resend.ApiKey, cfg.Resend.FromEmail, cfg.PublicUrl)
 	if err != nil {
 		return nil, fmt.Errorf("cannot create email module: %w", err)
 	}
-	metricss := metrics.New(pool, queries)
-	preferencesm := &preferences.Module{}
-	userss := users.New(pool, queries, authm, googleauthm, billingm, emailm, preferencesm, metricss)
+	metricsModule := metrics.New(pool, queries)
+	preferencesModule := preferences.New()
+	mainService := service.New(pool, queries, authModule, googleauthModule, billingModule, emailModule, preferencesModule, metricsModule)
 
 	return &deps{
-		pool:  pool,
-		users: userss,
+		pool:    pool,
+		service: mainService,
 	}, nil
 }
 
@@ -102,12 +102,12 @@ func seedUserCmd() *cobra.Command {
 			email, password := args[0], args[1]
 			now := time.Now()
 
-			accessToken, _, err := d.users.SignUp(ctx, now, email, password)
+			accessToken, _, err := d.service.SignUp(ctx, now, email, password)
 			if err != nil {
 				return err
 			}
 
-			userId, err := d.users.ValidateAccessToken(ctx, now, accessToken.Value)
+			userId, err := d.service.ValidateAccessToken(ctx, now, accessToken.Value)
 			if err != nil {
 				return err
 			}
@@ -115,14 +115,14 @@ func seedUserCmd() *cobra.Command {
 			if usedSub {
 				// mock speeches until subscription credits runs out
 				for range 1000 {
-					err := d.users.StartSpeech(ctx, now, userId)
+					err := d.service.StartSpeech(ctx, now, userId)
 					if err != nil {
 						if errors.Is(err, billing.ErrInsufficientCredits) {
 							break
 						}
 						return err
 					}
-					err = d.users.EndSpeech(context.Background(), now, db.InsertSpeechParams{
+					err = d.service.EndSpeech(context.Background(), now, db.InsertSpeechParams{
 						UserID:        userId,
 						InLang:        "en",
 						OutLang:       "fr",
@@ -139,7 +139,7 @@ func seedUserCmd() *cobra.Command {
 			}
 
 			for _, amount := range activeTopups {
-				if err := d.users.BuyTopup(ctx, now, userId, int32(amount)); err != nil {
+				if err := d.service.BuyTopup(ctx, now, userId, int32(amount)); err != nil {
 					return err
 				}
 			}
@@ -147,7 +147,7 @@ func seedUserCmd() *cobra.Command {
 			// expired: pass now-2months so expiry lands 1 month in the past
 			expiredNow := now.AddDate(0, -2, 0)
 			for _, amount := range expiredTopups {
-				if err := d.users.BuyTopup(ctx, expiredNow, userId, int32(amount)); err != nil {
+				if err := d.service.BuyTopup(ctx, expiredNow, userId, int32(amount)); err != nil {
 					return err
 				}
 			}

@@ -52,7 +52,7 @@ func (r *RestApi) verifyEmail(c *fiber.Ctx) error {
 func (r *RestApi) resendVerification(c *fiber.Ctx) error {
 	userId := c.Locals("userId").(uuid.UUID)
 
-	user, err := r.users.GetCurrentUser(c.Context(), userId)
+	user, err := r.service.GetCurrentUser(c.Context(), userId)
 	if err != nil {
 		log.Errorf("Error getting user: %s", err.Error())
 		return fiber.NewError(fiber.StatusInternalServerError, internalServerError)

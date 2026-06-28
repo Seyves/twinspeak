@@ -25,7 +25,7 @@ func (r *RestApi) requestIdMiddleware(c *fiber.Ctx) error {
 
 func (r *RestApi) authMiddleware(c *fiber.Ctx) error {
 	accessToken := c.Cookies(accessTokenCookie)
-	userId, err := r.users.ValidateAccessToken(c.Context(), time.Now(), accessToken)
+	userId, err := r.service.ValidateAccessToken(c.Context(), time.Now(), accessToken)
 	if err != nil {
 		return fiber.NewError(fiber.StatusUnauthorized, "invalid access token")
 	}
@@ -35,7 +35,7 @@ func (r *RestApi) authMiddleware(c *fiber.Ctx) error {
 
 func (r *RestApi) wsAuthMiddleware(c *fiber.Ctx) error {
 	ticket := c.Query("ticket")
-	userId, err := r.users.ValidateWSTicket(c.Context(), time.Now(), ticket)
+	userId, err := r.service.ValidateWSTicket(c.Context(), time.Now(), ticket)
 	if err != nil {
 		return fiber.NewError(fiber.StatusUnauthorized, "invalid ws ticket")
 	}
@@ -56,7 +56,7 @@ func (r *RestApi) emailVerifiedMiddleware(c *fiber.Ctx) error {
 	// If cookie says unverified, double-check with DB
 	// This handles: user verified in another tab, cookie manipulation
 	userId := c.Locals("userId").(uuid.UUID)
-	user, err := r.users.GetCurrentUser(c.Context(), userId)
+	user, err := r.service.GetCurrentUser(c.Context(), userId)
 	if err != nil {
 		log.Errorf("Error getting user in email verification middleware: %s", err.Error())
 		return fiber.NewError(fiber.StatusInternalServerError, internalServerError)
@@ -103,7 +103,7 @@ func (r *RestApi) metricsMiddleware(c *fiber.Ctx) error {
 	respBodyBytes := len(c.Response().Body())
 
 	go func() {
-		err := r.users.CreateHttpRequestMetric(
+		err := r.service.CreateHttpRequestMetric(
 			context.Background(),
 			db.InsertHttpRequestParams{
 				RequestID:            reqId,

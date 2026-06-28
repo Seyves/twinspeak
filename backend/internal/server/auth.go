@@ -51,7 +51,7 @@ func (r *RestApi) signIn(c *fiber.Ctx) error {
 	ip, _ := netip.ParseAddr(c.IP())
 	ctx = context.WithValue(ctx, "ip", &ip)
 
-	accessToken, refreshToken, userId, err := r.users.SignIn(ctx, time.Now(), req.Email, req.Password)
+	accessToken, refreshToken, userId, err := r.service.SignIn(ctx, time.Now(), req.Email, req.Password)
 	if err != nil {
 		if errors.Is(err, auth.ErrInvalidCredentials) {
 			return fiber.NewError(fiber.StatusUnauthorized, "invalid credentials")
@@ -62,7 +62,7 @@ func (r *RestApi) signIn(c *fiber.Ctx) error {
 	}
 
 	// Get user to check email verification status
-	user, err := r.users.GetCurrentUser(ctx, userId)
+	user, err := r.service.GetCurrentUser(ctx, userId)
 	if err != nil {
 		log.Errorf("Error getting user: %s", err.Error())
 		return fiber.NewError(fiber.StatusInternalServerError, internalServerError)
@@ -98,7 +98,7 @@ func (r *RestApi) signUp(c *fiber.Ctx) error {
 	ip, _ := netip.ParseAddr(c.IP())
 	ctx = context.WithValue(ctx, "ip", &ip)
 
-	accessToken, refreshToken, err := r.users.SignUp(ctx, time.Now(), req.Email, req.Password)
+	accessToken, refreshToken, err := r.service.SignUp(ctx, time.Now(), req.Email, req.Password)
 	if errors.Is(err, auth.ErrEmailAlreadyTaken) {
 		return fiber.NewError(fiber.StatusConflict, "email already taken")
 	} else if err != nil {
@@ -121,7 +121,7 @@ func (r *RestApi) refresh(c *fiber.Ctx) error {
 	// userAgent := string(c.Context().UserAgent())
 	// ip, _ := netip.ParseAddr(c.IP())
 	//
-	accessToken, refreshToken, userId, err := r.users.RotateSession(
+	accessToken, refreshToken, userId, err := r.service.RotateSession(
 		c.Context(),
 		time.Now(),
 		refreshTokenStr,
@@ -136,7 +136,7 @@ func (r *RestApi) refresh(c *fiber.Ctx) error {
 	}
 
 	// Get user to check email verification status
-	user, err := r.users.GetCurrentUser(c.Context(), userId)
+	user, err := r.service.GetCurrentUser(c.Context(), userId)
 	if err != nil {
 		log.Errorf("Error getting user: %s", err.Error())
 		return fiber.NewError(fiber.StatusInternalServerError, internalServerError)
@@ -152,7 +152,7 @@ func (r *RestApi) refresh(c *fiber.Ctx) error {
 func (r *RestApi) logout(c *fiber.Ctx) error {
 	refreshToken := c.Cookies(refreshTokenCookie)
 	if refreshToken != "" {
-		_ = r.users.Logout(c.Context(), refreshToken)
+		_ = r.service.Logout(c.Context(), refreshToken)
 	}
 
 	// Expire cookies by setting them with a past expiration date
@@ -164,7 +164,7 @@ func (r *RestApi) logout(c *fiber.Ctx) error {
 }
 
 func (r *RestApi) googleSignIn(c *fiber.Ctx) error {
-	url, state, err := r.users.GoogleRedirect()
+	url, state, err := r.service.GoogleRedirect()
 	if err != nil {
 		log.Errorf("Error generation sign-in url: %s", err.Error())
 		return fiber.NewError(fiber.StatusInternalServerError, internalServerError)
@@ -191,7 +191,7 @@ func (r *RestApi) googleCallback(c *fiber.Ctx) error {
 	// userAgent := string(c.Context().UserAgent())
 	// ip, _ := netip.ParseAddr(c.IP())
 
-	accessToken, refreshToken, err := r.users.GoogleCallback(c.Context(), time.Now(), req.Code, sessionState, req.State)
+	accessToken, refreshToken, err := r.service.GoogleCallback(c.Context(), time.Now(), req.Code, sessionState, req.State)
 	if errors.Is(err, googleauth.ErrGoogleInvalidState) ||
 		errors.Is(err, googleauth.ErrGoogleCannotExchange) ||
 		errors.Is(err, googleauth.ErrGoogleInvalidIdToken) {
@@ -204,7 +204,7 @@ func (r *RestApi) googleCallback(c *fiber.Ctx) error {
 
 	c.Cookie(getSecureCookie(refreshTokenCookie, refreshToken.Value, refreshToken.ExpiresAt))
 	c.Cookie(getSecureCookie(accessTokenCookie, accessToken.Value, accessToken.ExpiresAt))
-	c.Cookie(getEmailUnverifiedCookie(false, accessToken.ExpiresAt)) // Google users are auto-verified
+	c.Cookie(getEmailUnverifiedCookie(false, accessToken.ExpiresAt)) // Google service are auto-verified
 	// Killing session state cookie
 	c.Cookie(getSecureCookie(sessionStateCookie, "", time.Unix(0, 0)))
 
@@ -252,7 +252,7 @@ func (r *RestApi) requestPasswordReset(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, invalidRequestBody)
 	}
 
-	err = r.users.RequestPasswordReset(c.Context(), req.Email)
+	err = r.service.RequestPasswordReset(c.Context(), req.Email)
 	if errors.Is(err, email.ErrUserNotFound) {
 		return fiber.NewError(fiber.StatusNotFound, "user not found")
 	} else if err != nil {
@@ -280,7 +280,7 @@ func (r *RestApi) confirmPasswordReset(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "password must be at least 6 characters")
 	}
 
-	err = r.users.ResetPassword(c.Context(), req.Token, req.Password)
+	err = r.service.ResetPassword(c.Context(), req.Token, req.Password)
 	if err != nil {
 		if errors.Is(err, email.ErrInvalidResetToken) {
 			return fiber.NewError(fiber.StatusBadRequest, "invalid or expired reset token")

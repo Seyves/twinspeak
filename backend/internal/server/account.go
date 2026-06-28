@@ -21,7 +21,7 @@ func (r *RestApi) MountAccountRoutes(router fiber.Router) {
 
 func (r *RestApi) getAccount(c *fiber.Ctx) error {
 	userID := c.Locals("userId").(uuid.UUID)
-	user, err := r.users.GetCurrentUser(c.Context(), userID)
+	user, err := r.service.GetCurrentUser(c.Context(), userID)
 	if err != nil {
 		log.Errorf("Error getting current user: %s", err.Error())
 		return fiber.NewError(fiber.StatusInternalServerError, internalServerError)
@@ -43,7 +43,7 @@ func (r *RestApi) getAccount(c *fiber.Ctx) error {
 func (r *RestApi) getPreferences(c *fiber.Ctx) error {
 	userID := c.Locals("userId").(uuid.UUID)
 
-	prefs, err := r.users.GetPreferences(c.Context(), userID)
+	prefs, err := r.service.GetPreferences(c.Context(), userID)
 	if err != nil {
 		log.Errorf("Error getting user preferences: %s", err.Error())
 		return fiber.NewError(fiber.StatusInternalServerError, internalServerError)
@@ -81,7 +81,7 @@ func (r *RestApi) updatePreferences(c *fiber.Ctx) error {
 
 	userID := c.Locals("userId").(uuid.UUID)
 
-	err = r.users.UpdatePreferences(c.Context(), db.UpdateUserPrefsParams{
+	err = r.service.UpdatePreferences(c.Context(), db.UpdateUserPrefsParams{
 		UserID:          userID,
 		ChatMessageSize: req.ChatMsgSize,
 		Theme:           req.Theme,
@@ -99,7 +99,7 @@ func (r *RestApi) updatePreferences(c *fiber.Ctx) error {
 func (r *RestApi) getMessages(c *fiber.Ctx) error {
 	userID := c.Locals("userId").(uuid.UUID)
 
-	speeches, err := r.users.GetSpeeches(c.Context(), userID)
+	speeches, err := r.service.GetSpeeches(c.Context(), userID)
 	if err != nil {
 		log.Errorf("Error getting speeches: %s", err.Error())
 		return fiber.NewError(fiber.StatusInternalServerError, internalServerError)
@@ -131,7 +131,7 @@ func (r *RestApi) clearChat(c *fiber.Ctx) error {
 	userID := c.Locals("userId").(uuid.UUID)
 
 	now := time.Now()
-	err := r.users.SetHideMessagesTimestamp(c.Context(), userID, now)
+	err := r.service.SetHideMessagesTimestamp(c.Context(), userID, now)
 	if err != nil {
 		log.Errorf("Error setting hide messages timestamp: %s", err.Error())
 		return fiber.NewError(fiber.StatusInternalServerError, internalServerError)
@@ -143,7 +143,7 @@ func (r *RestApi) clearChat(c *fiber.Ctx) error {
 func (r *RestApi) getCredits(c *fiber.Ctx) error {
 	userID := c.Locals("userId").(uuid.UUID)
 	now := time.Now()
-	grants, err := r.users.GetCreditGrants(c.Context(), userID, now)
+	grants, err := r.service.GetCreditGrants(c.Context(), userID, now)
 	if err != nil {
 		log.Errorf("Error getting credit grants: %s", err.Error())
 		return fiber.NewError(fiber.StatusInternalServerError, internalServerError)

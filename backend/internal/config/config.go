@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/spf13/viper"
 	"github.com/twinspeak/backend/internal/googleauth"
@@ -25,6 +26,7 @@ type Config struct {
 	GladiaKey         string            `mapstructure:"gladia-key"`
 	FasterWhisperUrl  string            `mapstructure:"faster-whisper-url"`
 	LibretranslateUrl string            `mapstructure:"libretranslate-url"`
+	SchedulerInterval time.Duration     `mapstructure:"scheduler-interval"` // interval for subscription renewal scheduler
 	Google            googleauth.Config `mapstructure:"google"`
 	Resend            ResendConfig      `mapstructure:"resend"`
 }
@@ -33,6 +35,9 @@ func Parse(path string, cfg any) error {
 	viper.SetEnvPrefix("TWINSPEAK")
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_", ".", "_"))
 	viper.AutomaticEnv()
+
+	// Set default values
+	viper.SetDefault("scheduler-interval", "1h")
 
 	bindEnvVars()
 
@@ -61,6 +66,7 @@ func bindEnvVars() {
 	viper.BindEnv("gladia-key", "TWINSPEAK_GLADIA_KEY")
 	viper.BindEnv("faster-whisper-url", "TWINSPEAK_FASTER_WHISPER_URL")
 	viper.BindEnv("libretranslate-url", "TWINSPEAK_LIBRETRANSLATE_URL")
+	viper.BindEnv("scheduler-interval", "TWINSPEAK_SCHEDULER_INTERVAL")
 
 	viper.BindEnv("google.client-id", "TWINSPEAK_GOOGLE_CLIENT_ID")
 	viper.BindEnv("google.client-secret", "TWINSPEAK_GOOGLE_CLIENT_SECRET")
