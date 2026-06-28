@@ -15,10 +15,6 @@ type Tab = {
 function Settings() {
     const tabs: Tab[] = [
         {
-            name: 'preferences',
-            to: '/settings/preferences',
-        },
-        {
             name: 'account',
             to: '/settings/account',
         },
@@ -26,7 +22,6 @@ function Settings() {
 
     return (
         <div className="font-sans h-dvh flex flex-col bg-background text-foreground">
-            {/* Header */}
             <div className="sticky top-0 z-10 border-b border-border/40 bg-background/80 backdrop-blur-sm px-4 py-3 flex items-center gap-3">
                 <Link to={'/'}>
                     <Button
@@ -40,7 +35,6 @@ function Settings() {
                 <h1 className="text-xl font-semibold">Settings</h1>
             </div>
 
-            {/* Tab bar */}
             <div className="border-b border-border/40 bg-background px-4 flex">
                 {tabs.map((tab) => (
                     <Link key={tab.name} to={tab.to}>
@@ -63,7 +57,6 @@ function Settings() {
                 ))}
             </div>
 
-            {/* Scrollable content */}
             <div className="flex-1 overflow-auto px-4 py-5">
                 <div className="max-w-lg mx-auto space-y-4 h-full">
                     <Outlet />
