@@ -267,7 +267,7 @@ func (q *Queries) FindCreditGrantForSpend(ctx context.Context, arg FindCreditGra
 }
 
 const getExpiredSubscriptions = `-- name: GetExpiredSubscriptions :many
-select user_id from subscriptions where next_monthly_grant_at >= $1
+select user_id from subscriptions where next_monthly_grant_at <= $1
 `
 
 func (q *Queries) GetExpiredSubscriptions(ctx context.Context, nextMonthlyGrantAt time.Time) ([]uuid.UUID, error) {

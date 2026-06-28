@@ -81,14 +81,19 @@ func TestRenewSubscription(t *testing.T) {
 	err := billing.StartSubscription(t.Context(), qtx, userId, now)
 	require.NoError(t, err)
 
+	// Mon, 1 Feb 2024 07:59:00 +0000
+	now = time.Date(2024, time.February, 1, 7, 59, 0, 0, time.UTC)
+	expired, err := billing.GetExpiredSubscriptions(t.Context(), qtx, now)
+	require.NoError(t, err)
+	require.Len(t, expired, 0)
+
 	// Mon, 1 Feb 2024 08:00:00 +0000
 	now = time.Date(2024, time.February, 1, 8, 0, 0, 0, time.UTC)
 	err = billing.SpendCredits(t.Context(), qtx, userId, now, MaxCreditsPerSession)
 	require.Error(t, err)
 
-	expired, err := billing.GetExpiredSubscriptions(t.Context(), qtx, now)
+	expired, err = billing.GetExpiredSubscriptions(t.Context(), qtx, now)
 	require.NoError(t, err)
-
 	require.Len(t, expired, 1)
 	assert.Contains(t, expired, userId)
 

@@ -56,7 +56,7 @@ insert into subscriptions (user_id, next_monthly_grant_at) values ($1, $2)
 returning id;
 
 -- name: GetExpiredSubscriptions :many
-select user_id from subscriptions where next_monthly_grant_at >= $1;
+select user_id from subscriptions where next_monthly_grant_at <= $1;
 
 -- name: UpdateSubscription :exec
 update subscriptions
