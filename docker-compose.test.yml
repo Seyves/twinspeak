@@ -1,20 +1,17 @@
+name: twinspeak-test
 services:
   db:
     image: postgres:18
-    container_name: twinspeak-test-db
+    container_name: twinspeak-db-test
     restart: always
     environment:
       POSTGRES_PASSWORD: postgres
       POSTGRES_USER: postgres
       POSTGRES_DB: twinspeak
-    ports:
-      - "5432:5432"
     networks:
       - twinspeak-test
     volumes:
-      # Persistent data (PostgreSQL 18+ uses /var/lib/postgresql)
-      - postgresdata:/var/lib/postgresql
-      # Auto-initialize schema
+      - postgresdatatest:/var/lib/postgresql
       - ./backend/schema.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d twinspeak"]
@@ -25,8 +22,8 @@ services:
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
-    container_name: twinspeak-test-backend
+      dockerfile: Dockerfile.dev
+    container_name: twinspeak-backend-test
     environment:
       - DB_URL=postgres://postgres:postgres@db:5432/twinspeak
     volumes:
@@ -46,6 +43,6 @@ networks:
     driver: bridge
 
 volumes:
-  postgresdata:
+  postgresdatatest:
   go-pkg-cache:
   go-build-cache:

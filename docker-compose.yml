@@ -1,3 +1,4 @@
+name: twinspeak
 services:
   backend:
     build:
@@ -12,47 +13,27 @@ services:
     networks:
       - twinspeak
     depends_on:
-      db:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8080/api/v1 2>&1 | grep -qE '(200 OK|404 Not Found|401 Unauthorized)'"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 40s
+      - db
     security_opt:
       - no-new-privileges:true
     read_only: true
-    tmpfs:
-      - /tmp:noexec,nosuid,size=64m
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      args:
-        NODE_ENV: production
-        VITE_BACKEND_HOST: backend:8080
     image: twinspeak-frontend:latest
     container_name: twinspeak-frontend
     restart: unless-stopped
     environment:
-      - NODE_ENV=production
-      - VITE_BACKEND_HOST=backend:8080
       - PORT=4321
     networks:
       - twinspeak
     depends_on:
-      backend:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:4321"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+      - backend
     security_opt:
       - no-new-privileges:true
+    read_only: true
 
   db:
     image: postgres:18
@@ -73,12 +54,6 @@ services:
       - postgresdata:/var/lib/postgresql
       # Auto-initialize schema on first run
       - ./backend/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d twinspeak"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
     security_opt:
       - no-new-privileges:true
 
@@ -94,19 +69,11 @@ services:
     networks:
       - twinspeak
     depends_on:
-      frontend:
-        condition: service_healthy
-      backend:
-        condition: service_healthy
+      - frontend
+      - backend
     environment:
       - BACKEND_HOST=backend:8080
       - FRONTEND_HOST=frontend:4321
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
     security_opt:
       - no-new-privileges:true
 
