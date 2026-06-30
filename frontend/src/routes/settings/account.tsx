@@ -124,7 +124,7 @@ function Account() {
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="px-4 pb-2 sm:py-4 gap-2 flex">
+                                    <div className="px-4 pt-2 pb-2 gap-2 flex">
                                         <Button
                                             variant="outline"
                                             onClick={() => handleSendPasswordReset(me.email)}
