@@ -1,5 +1,7 @@
 # TwinSpeak
 
+![preview](preview.png)
+
 ## Overview
 
 TwinSpeak is a real-time translation service designed for tourists and travelers to communicate with foreigners in their native languages. The application breaks down language barriers by providing instant speech-to-speech translation through a web interface.
