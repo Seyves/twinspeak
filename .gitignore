@@ -3,6 +3,7 @@ backend/tmp/
 backend/go.sum
 !backend/go.sum
 backend/config.yaml
+backend/.env
 
 # Frontend
 .astro/

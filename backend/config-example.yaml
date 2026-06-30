@@ -1,16 +1,31 @@
+# Host on which app will be listening for HTTP.
 host: 0.0.0.0:8080
+# Domain used for email redirect links.
 public-url: http://www.twinspeak.site
+# DB connection string.
 db-url: postgresql://postgres:postgres@db:5432/twinspeek
+# Secret for JWT encryption.
 hmac-secret: some_key
+# Pipeline option that determines the transcription and translation provider.
+# Currently, two values are supported:
+#   - gladia: cloud-based provider
+#   - whisper: uses Faster Whisper for transcription and LibreTranslate for translation
+# Gladia is the recommended option because it supports real-time streaming transcription and translation.
 pipeline: gladia
+# Gladia API key (needed for gladia pipeline).
 gladia-key: some_key
+# Faster Whisper URL (needed for whisper pipeline).
 faster-whisper-url: http://whisper:9000
+# LibreTranslate URL (needed for whisper pipeline).
 libretranslate-url: http://libretranslate:5000
+# Scheduler interval (Go duration format).
 scheduler-interval: 1h
+# Google OAuth 2.0 config.
 google:
   client-id: client_id
   client-secret: client_secret
   redirect-url: https://redirect_url
+# Resend config (email provider).
 resend:
   api-key: some_key
   from-email: noreply@contact.twinspeak.site
