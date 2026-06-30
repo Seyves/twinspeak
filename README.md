@@ -168,3 +168,32 @@ docker compose -f docker-compose.test.yml up --exit-code-from backend
 ```
 
 The test environment uses the `DB_URL` environment variable to connect to the test database. Each test runs within its own transaction that is rolled back after completion.
+
+## CLI Tool
+
+The project includes a command-line tool for administrative tasks and database seeding, located at `backend/cmd/cli/main.go`. The CLI uses the same configuration as the main server and provides utilities for development and testing.
+
+### Available Commands
+
+**Seed User**
+
+Create a test user with various billing states:
+
+```bash
+# Basic user with default 30-minute monthly subscription
+./twinspeak-cli seed user email@example.com password123
+
+# User with exhausted monthly credits
+./twinspeak-cli seed user email@example.com password123 --used-sub
+
+# User with active top-ups (in seconds)
+./twinspeak-cli seed user email@example.com password123 --active-topup 600 --active-topup 1200
+
+# User with expired top-ups
+./twinspeak-cli seed user email@example.com password123 --expired-topup 300
+
+# Combined scenario
+./twinspeak-cli seed user email@example.com password123 --used-sub --active-topup 1800
+```
+
+The `seed user` command automatically verifies the email address, so the user is immediately ready to use the service. This is useful for quickly setting up test accounts with different credit states during development.
