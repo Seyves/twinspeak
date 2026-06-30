@@ -20,6 +20,7 @@ import { toast } from 'sonner'
 import { localThemeAtom } from '@/components/theme-provider'
 import { chatMessageSize, themes, type ChatMessageSize, type Theme } from '@/definitions/chat'
 import { useEffect } from 'react'
+import { Separator } from '@/components/ui/separator'
 
 export const Route = createFileRoute('/settings/account')({
     component: Account,
@@ -79,7 +80,7 @@ function Account() {
     }
 
     return (
-        <div className="relative h-full">
+        <div className="relative h-full *:pb-4">
             <AnimatePresence>
                 {(function () {
                     if (account.isPending || prefs.isPending) return <Loader key="loader" />
@@ -103,7 +104,7 @@ function Account() {
                             <div className="rounded-2xl border border-border/50 bg-card overflow-hidden mb-4">
                                 <>
                                     <div className="px-4 pt-5 pb-4 flex items-center gap-4">
-                                        <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
+                                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
                                             {me.profilePicture ? (
                                                 <img
                                                     src={me.profilePicture}
@@ -117,13 +118,13 @@ function Account() {
                                             )}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="font-medium truncate">{me.email}</p>
+                                            <p className="truncate text-sm">{me.email}</p>
                                             <span className="inline-flex items-center mt-1.5 py-0.5 text-sm rounded-full text-muted-foreground">
                                                 Free Plan
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="px-4 py-2 sm:py-4 gap-2 flex">
+                                    <div className="px-4 pb-2 sm:py-4 gap-2 flex">
                                         <Button
                                             variant="outline"
                                             onClick={() => handleSendPasswordReset(me.email)}
@@ -152,9 +153,23 @@ function Account() {
                                     </p>
                                 ) : (
                                     <div className="space-y-3">
-                                        {grants.map((grant) => (
-                                            <CreditGrantCard key={grant.id} grant={grant} />
-                                        ))}
+                                        {grants.map((grant, i) => {
+                                            if (i >= grants.length - 1) {
+                                                return (
+                                                    <CreditGrantCard key={grant.id} grant={grant} />
+                                                )
+                                            } else {
+                                                return (
+                                                    <>
+                                                        <CreditGrantCard
+                                                            key={grant.id}
+                                                            grant={grant}
+                                                        />
+                                                        <Separator className='mb-4'/>
+                                                    </>
+                                                )
+                                            }
+                                        })}
                                     </div>
                                 )}
                             </SectionCard>
@@ -225,7 +240,7 @@ function CreditGrantCard({ grant }: { grant: AccountApi.CreditGrant }) {
     const isMonthly = grant.type === 'monthly'
 
     return (
-        <div className="border border-border rounded-2xl p-4 space-y-4">
+        <div className="rounded-2xl pb-2 space-y-4">
             <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                     <div
