@@ -1,6 +1,6 @@
 # TwinSpeak
 
-![preview](preview.png)
+<img src="preview.png" style="" width="250"/>
 
 ## Overview
 
