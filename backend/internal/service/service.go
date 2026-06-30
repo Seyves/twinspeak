@@ -358,6 +358,42 @@ func (s *Service) ResetPassword(ctx context.Context, token string, newPassword s
 	return nil
 }
 
+func (s *Service) ResendVerificationEmail(ctx context.Context, userId uuid.UUID) error {
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("cannot start db transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := s.queries.WithTx(tx)
+
+	user, err := s.GetCurrentUser(ctx, userId)
+	if err != nil {
+		return fmt.Errorf("cannot get user: %w", err)
+	}
+	if user.EmailVerified {
+		return nil
+	}
+	err = s.email.SendVerificationEmail(ctx, qtx, userId, user.Email)
+	if err != nil {
+		return fmt.Errorf("cannot send verification email: %w", err)
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return fmt.Errorf("cannot commit db transaction: %w", err)
+	}
+	return nil
+}
+
+func (s *Service) VerifyEmail(ctx context.Context, token string) (uuid.UUID, error) {
+	userId, err := s.email.VerifyEmail(ctx, s.queries, token)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("cannot verify token: %w", err)
+	}
+	return userId, nil
+}
+
 func (s *Service) GetQueries() *db.Queries {
 	return s.queries
 }

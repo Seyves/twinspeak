@@ -80,7 +80,7 @@ func main() {
 	sched.Start(ctx, true)
 	log.Infof("Subscription renewal scheduler started with interval: %s", cfg.SchedulerInterval)
 
-	api := server.NewRestApi(cfg.Host, p, metricsModule, mainService, emailModule, pool, queries)
+	api := server.NewRestApi(cfg.Host, p, mainService, pool, queries)
 
 	serverErrors := make(chan error, 1)
 	go func() {

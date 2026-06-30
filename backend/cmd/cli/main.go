@@ -22,6 +22,7 @@ import (
 
 type deps struct {
 	pool    *pgxpool.Pool
+	queries *db.Queries
 	service *service.Service
 }
 
@@ -51,6 +52,7 @@ func initDeps(cfgPath string) (*deps, error) {
 
 	return &deps{
 		pool:    pool,
+		queries: queries,
 		service: mainService,
 	}, nil
 }
@@ -108,6 +110,12 @@ func seedUserCmd() *cobra.Command {
 			}
 
 			userId, err := d.service.ValidateAccessToken(ctx, now, accessToken.Value)
+			if err != nil {
+				return err
+			}
+
+			// Manually verifying email
+			err = d.queries.VerifyUserEmail(ctx, userId)
 			if err != nil {
 				return err
 			}

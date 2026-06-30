@@ -8,8 +8,6 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/twinspeak/backend/internal/db"
-	"github.com/twinspeak/backend/internal/email"
-	"github.com/twinspeak/backend/internal/metrics"
 	"github.com/twinspeak/backend/internal/service"
 	"github.com/twinspeak/backend/internal/speechpipeline"
 )
@@ -24,7 +22,6 @@ type RestApi struct {
 	fiber    *fiber.App
 	pipeline speechpipeline.Pipeline
 	service  *service.Service
-	email    *email.Module
 	db       *pgxpool.Pool
 	queries  *db.Queries
 }
@@ -75,9 +72,7 @@ func (r *RestApi) ping(c *fiber.Ctx) error {
 func NewRestApi(
 	host string,
 	pipeline speechpipeline.Pipeline,
-	metrics *metrics.Module,
 	service *service.Service,
-	emailModule *email.Module,
 	dbPool *pgxpool.Pool,
 	queries *db.Queries,
 ) *RestApi {
@@ -90,7 +85,6 @@ func NewRestApi(
 		fiber:    server,
 		service:  service,
 		pipeline: pipeline,
-		email:    emailModule,
 		db:       dbPool,
 		queries:  queries,
 	}
